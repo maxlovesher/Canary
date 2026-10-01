@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+dist/
+build/
+*.stackdump
+
+# Local artifacts. Never commit raw attack data, model responses, or caches:
+# the repo is public and only aggregate results get published.
+runs/
+.cache/
+data/raw/

@@ -1,0 +1,36 @@
+[project]
+name = "redbench"
+version = "0.1.0"
+description = "Config-driven red-teaming harness for LLMs, RAG pipelines, and tool-using agents."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.6",  # config + record validation
+    "pyyaml>=6.0",    # YAML config files
+    "httpx>=0.27",    # Ollama HTTP API; MockTransport makes targets testable offline
+]
+
+[project.scripts]
+redbench = "redbench.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/redbench"]
+
+[tool.ruff]  # run via `uvx ruff` (not a project dependency)
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]  # lets tests import tests.helpers
+addopts = "-q"
