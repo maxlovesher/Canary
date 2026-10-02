@@ -42,12 +42,14 @@ class Runner:
         sources: Sequence[AttackSource],
         judge: Judge,
         *,
+        secondary_judges: Sequence[Judge] = (),
         max_cases: int | None = None,
         progress_every: int = 10,
     ) -> None:
         self.target = target
         self.sources = list(sources)
         self.judge = judge
+        self.secondary_judges = list(secondary_judges)
         self.max_cases = max_cases
         self.progress_every = max(1, progress_every)
 
@@ -74,10 +76,19 @@ class Runner:
             response = self.target.generate(case)
         except TargetError as exc:
             logger.warning("target error on case %s: %s", case.id, exc)
-            verdict = Verdict(success=None, judge=self.judge.name, reason="target error; not judged")
-            return AttackResult(case=case, response=None, error=str(exc), verdict=verdict)
-        verdict = self.judge.judge(case, response)
-        return AttackResult(case=case, response=response, verdict=verdict)
+            unjudged = [
+                Verdict(success=None, judge=judge.name, reason="target error; not judged")
+                for judge in (self.judge, *self.secondary_judges)
+            ]
+            return AttackResult(
+                case=case, response=None, error=str(exc), verdict=unjudged[0], secondary_verdicts=unjudged[1:]
+            )
+        return AttackResult(
+            case=case,
+            response=response,
+            verdict=self.judge.judge(case, response),
+            secondary_verdicts=[judge.judge(case, response) for judge in self.secondary_judges],
+        )
 
     def run(self, cases: Sequence[AttackCase], writer: ResultWriter) -> RunOutcome:
         """Run every case, streaming results to ``writer``. Ctrl-C stops cleanly."""

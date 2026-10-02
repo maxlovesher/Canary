@@ -61,7 +61,8 @@ class RedBenchConfig(_Strict):
     run: RunConfig
     target: ComponentSpec
     attacks: list[ComponentSpec] = Field(min_length=1)
-    judge: ComponentSpec
+    judge: ComponentSpec  # primary judge: its verdicts define ASR
+    secondary_judges: list[ComponentSpec] = Field(default_factory=list)  # reported as extra ASR columns
     pricing: PricingConfig = Field(default_factory=PricingConfig)
 
 

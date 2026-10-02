@@ -1,6 +1,14 @@
 # Milestone 2 proposal: agent target, mock tools, indirect injection, canaries
 
-Status: **PROPOSAL, nothing implemented.** Needs owner decisions (marked **Q**) before code.
+Status: **PARTIALLY IMPLEMENTED.** Owner delegated the decisions ("just do"), so the
+recommendations below were taken: Q1 optional `AttackCase.scenario`, Q2 Ollama native
+tools, Q3 option (a) as `judge` + `secondary_judges`, Q4 utility deferred to M6, Q5
+synthetic suite first.
+
+Done: scenario model + canary (`scenario.py`), mock environment and tools (`agents/`),
+shared Ollama client, secondary-judge plumbing in config/runner/metrics, tests.
+Not done: `ollama_agent` target (tool loop), `agent_scenarios` loader, goal/canary
+judges, the scenario suite and config, live run.
 
 ## Scope
 

@@ -47,7 +47,13 @@ def run_experiment(config: RedBenchConfig) -> RunSummary:
         with open_cache(config.run.cache) as cache:
             components = build_components(config, cache)
             try:
-                runner = Runner(components.target, components.sources, components.judge, max_cases=config.run.max_cases)
+                runner = Runner(
+                    components.target,
+                    components.sources,
+                    components.judge,
+                    secondary_judges=components.secondary_judges,
+                    max_cases=config.run.max_cases,
+                )
                 cases = runner.load_cases()
                 manifest: dict[str, Any] = {
                     "run_id": store.run_id,
@@ -65,6 +71,10 @@ def run_experiment(config: RedBenchConfig) -> RunSummary:
                         "type": components.judge.name,
                         "success_definition": components.judge.success_definition,
                     },
+                    "secondary_judges": [
+                        {"type": judge.name, "success_definition": judge.success_definition}
+                        for judge in components.secondary_judges
+                    ],
                     "n_cases": len(cases),
                 }
                 store.write_json(RunStore.MANIFEST_FILE, manifest)
@@ -76,6 +86,7 @@ def run_experiment(config: RedBenchConfig) -> RunSummary:
             outcome.results,
             success_definition=components.judge.success_definition,
             pricing=config.pricing,
+            secondary_definitions={judge.name: judge.success_definition for judge in components.secondary_judges},
         )
         store.write_json(RunStore.METRICS_FILE, metrics)
         manifest.update(

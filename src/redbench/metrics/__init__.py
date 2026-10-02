@@ -1,10 +1,10 @@
 """Metrics computed from a run's results. All values here are *measured*."""
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from redbench.config import PricingConfig
-from redbench.metrics.asr import RateSummary, attack_success_rate
+from redbench.metrics.asr import RateSummary, attack_success_rate, secondary_verdict
 from redbench.metrics.performance import performance_summary
 from redbench.records import AttackResult
 
@@ -16,12 +16,22 @@ def compute_metrics(
     *,
     success_definition: str,
     pricing: PricingConfig,
+    secondary_definitions: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
-    """All milestone-1 metrics for one run, as a JSON-ready dict."""
+    """All metrics for one run, as a JSON-ready dict.
+
+    Args:
+        success_definition: what "success" means for the primary judge.
+        secondary_definitions: secondary judge name -> its success definition.
+    """
     return {
         "provenance": "measured",
         "success_definition": success_definition,
         "asr": attack_success_rate(results),
+        "secondary_asr": {
+            name: {"success_definition": definition, "asr": attack_success_rate(results, secondary_verdict(name))}
+            for name, definition in (secondary_definitions or {}).items()
+        },
         "performance": performance_summary(
             results,
             input_per_mtok=pricing.input_per_mtok,

@@ -6,12 +6,12 @@ infrastructure failures never masquerade as successful defenses or attacks.
 """
 
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
 from typing import Any
 
 from redbench.metrics.stats import wilson_interval
-from redbench.records import AttackResult
+from redbench.records import AttackResult, Verdict
 
 
 @dataclass(frozen=True)
@@ -37,12 +37,30 @@ class RateSummary:
         return asdict(self)
 
 
-def attack_success_rate(results: Sequence[AttackResult]) -> dict[str, Any]:
+def primary_verdict(result: AttackResult) -> Verdict | None:
+    """The verdict that defines a run's headline ASR."""
+    return result.verdict
+
+
+def secondary_verdict(judge_name: str) -> Callable[[AttackResult], Verdict | None]:
+    """Selector for one secondary judge's verdict (None when that judge did not run)."""
+
+    def select(result: AttackResult) -> Verdict | None:
+        return next((v for v in result.secondary_verdicts if v.judge == judge_name), None)
+
+    return select
+
+
+def attack_success_rate(
+    results: Sequence[AttackResult],
+    verdict_of: Callable[[AttackResult], Verdict | None] = primary_verdict,
+) -> dict[str, Any]:
     """ASR overall and by category, plus the count of unjudged results."""
     counts: dict[str, list[int]] = defaultdict(lambda: [0, 0])  # category -> [successes, n]
     unjudged = 0
     for result in results:
-        success = result.verdict.success
+        verdict = verdict_of(result)
+        success = None if verdict is None else verdict.success
         if success is None:
             unjudged += 1
             continue

@@ -91,6 +91,9 @@ def format_asr_table(metrics: dict[str, Any]) -> str:
     for category, summary in rows:
         lines.append(f"{category[:32]:<32} {summary['n']:>4} {_fmt_rate(summary)}")
     lines.append(f"unjudged (target errors / truncated answers): {asr['n_unjudged']} of {asr['n_results']}")
+    for name, secondary in metrics.get("secondary_asr", {}).items():
+        overall = secondary["asr"]["overall"]
+        lines.append(f"secondary {name} [{secondary['success_definition']}]: {overall['n']:>4} {_fmt_rate(overall)}")
     truncated = metrics["performance"]["n_truncated"]
     if truncated:
         lines.append(f"WARNING: {truncated} responses hit max_tokens; consider raising target.params.max_tokens")

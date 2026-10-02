@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any, Generic, TypeVar
 from pydantic import BaseModel, ValidationError
 
 from redbench.errors import ComponentError
+from redbench.scenario import make_canary
 
 if TYPE_CHECKING:
     from redbench.cache import ResponseCache
@@ -33,6 +34,11 @@ class BuildContext:
 
     seed: int
     cache: ResponseCache | None = None
+
+    @property
+    def canary(self) -> str:
+        """The run's canary secret: planted by agent targets, searched for by judges."""
+        return make_canary(self.seed)
 
 
 class Registry(Generic[T]):

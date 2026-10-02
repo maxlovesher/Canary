@@ -4,7 +4,7 @@ Status legend: **PROVISIONAL** = chosen by the implementation partner while the
 owner was away, using the recommendation from the milestone-1 proposal; please
 confirm or overturn. **ACCEPTED** = confirmed by the owner.
 
-## D1. Milestone-1 dataset and judge semantics — PROVISIONAL
+## D1. Milestone-1 dataset and judge semantics — ACCEPTED
 
 JailbreakBench JBB-Behaviors (harmful split), sent as direct requests (prompt =
 `Goal`), judged by refusal patterns. Reported ASR is labeled
@@ -18,7 +18,7 @@ JailbreakBench JBB-Behaviors (harmful split), sent as direct requests (prompt =
 - Alternative: system-prompt canary extraction with an exact-match judge
   (unambiguous judge, different dataset). Natural fit for milestone 2 instead.
 
-## D2. Component config shape: `type` + `params`, validated per component — PROVISIONAL
+## D2. Component config shape: `type` + `params`, validated per component — ACCEPTED
 
 Each component class owns a pydantic `Params` model; the registry validates the
 raw `params` dict at build time. `config.py` never lists components.
@@ -27,7 +27,7 @@ raw `params` dict at build time. `config.py` never lists components.
 - Con: no single JSON schema for the whole config. Errors still surface before
   any model call because `build_components` runs at startup (and `redbench validate`).
 
-## D3. Response cache: SQLite (stdlib) — PROVISIONAL
+## D3. Response cache: SQLite (stdlib) — ACCEPTED
 
 Single file, atomic writes, indexed lookups, no dependency. Key = sha256 of
 (target type, model digest, full request body incl. seed + sampling params).
@@ -36,17 +36,17 @@ Single file, atomic writes, indexed lookups, no dependency. Key = sha256 of
   (correctness over convenience). Consequence: even `read_only` replay needs
   Ollama running to look up the digest (`/api/tags`, no generation).
 
-## D4. HTTP: `httpx`, not the `ollama` client — PROVISIONAL
+## D4. HTTP: `httpx`, not the `ollama` client — ACCEPTED
 
 Thin, testable with `MockTransport`, and reusable for OpenAI-compatible
 endpoints later. Retries transport errors and 408/429/5xx with exponential backoff.
 
-## D5. Package layout — PROVISIONAL
+## D5. Package layout — ACCEPTED
 
 Package `redbench` at the root of the `Canary` repo (src layout). RAGBench's
 conventions were not available to mirror; happy to align once shared.
 
-## D6. Default model: `qwen3:4b`, `think: true`, `max_tokens: 2048` — PROVISIONAL (placeholder)
+## D6. Default model: `qwen3:4b`, `think: true`, `max_tokens: 2048` — ACCEPTED (placeholder model)
 
 Chosen only because it was already pulled on the dev machine (RTX 3060 6 GB).
 Model is config, never hardcoded.
@@ -65,7 +65,7 @@ metrics report `n_truncated` and the CLI warns.
 Worth deciding: a non-reasoning model (e.g. an instruct variant) is ~10x cheaper
 per case and avoids the issue entirely, but needs a pull.
 
-## D7. Statistics — PROVISIONAL
+## D7. Statistics — ACCEPTED
 
 ASR reported with Wilson 95% intervals (hand-implemented, tested against
 reference values). Target errors excluded from denominators and reported as
