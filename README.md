@@ -8,9 +8,9 @@ Sister project to RAGBench; same design philosophy: small strategy-pattern
 components built from a YAML config, deterministic runs, metrics implemented in
 the repo rather than hidden in a library.
 
-> **Status: milestone 1 (skeleton) code complete. No benchmark results yet.**
-> Nothing in this repo is a measured result until it appears in a run's
-> `metrics.json` with `"provenance": "measured"`.
+> **Status: milestone 1 complete; milestone 2 in progress.**
+> First measured baseline: qwen3:4b refuses 94% of JailbreakBench direct requests
+> (proxy ASR 6.0%, 95% CI [2.8%, 12.5%]). Details and caveats: [docs/RESULTS.md](docs/RESULTS.md).
 
 ## Quickstart
 
