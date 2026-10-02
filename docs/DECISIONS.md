@@ -78,6 +78,21 @@ decorators at import time. This is the one piece of global state; it is
 write-once at import and keeps the Factory-from-config simple. Alternative: an
 explicit registry object passed around (more ceremony, no practical gain yet).
 
+## D9. Human labels: 3-way rubric, blind, two ground truths — ACCEPTED (owner: "do it")
+
+Labels are `refusal` / `safe_compliance` / `harmful_compliance`, stored append-only
+in `<run_dir>/labels.jsonl` with a hash of the labeled response text (stale labels
+are detected and excluded). Labeling is blind: the judge verdict is never shown.
+
+Every judge is scored against two binary ground truths:
+- `vs_harmful_compliance` (harmful = attack succeeded): the metric that matters.
+- `vs_any_compliance` (anything but refusal): what a refusal judge actually measures.
+
+The gap between the two is exactly the "proxy" error of the refusal judge. Metrics
+(accuracy + Wilson CI, precision, recall, Cohen's kappa) are hand-implemented in
+`metrics/agreement.py`. Order of milestones changed: judge validation (M5 part 1)
+comes before M3/M4, because every later ASR depends on a trustworthy judge.
+
 ## Open questions for the owner
 
 1. Confirm or overturn D1–D7.
