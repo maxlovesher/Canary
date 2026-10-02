@@ -14,13 +14,13 @@ import csv
 import hashlib
 import io
 import logging
-import random
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt
 
 from redbench.attacks.base import ATTACK_SOURCES
+from redbench.attacks.selection import select_cases
 from redbench.errors import DatasetError
 from redbench.records import AttackCase
 from redbench.registry import BuildContext
@@ -59,9 +59,9 @@ class JailbreakBenchSource:
                 f"{self.params.path} sha256 is {self._sha256}, expected {self.params.expected_sha256}; "
                 "the dataset changed or the wrong file is configured"
             )
-        cases = self._parse(raw)
-        cases = self._filter_categories(cases)
-        cases = self._sample(cases)
+        cases = select_cases(
+            self._parse(raw), categories=self.params.categories, sample=self.params.sample, seed=self._seed
+        )
         self._n_loaded = len(cases)
         logger.info("jailbreakbench: %d cases from %s (sha256 %s)", len(cases), self.params.path, self._sha256[:12])
         return cases
@@ -117,22 +117,3 @@ class JailbreakBenchSource:
                 "jbb_source": (row.get("Source") or "").strip(),
             },
         )
-
-    def _filter_categories(self, cases: list[AttackCase]) -> list[AttackCase]:
-        wanted = self.params.categories
-        if wanted is None:
-            return cases
-        available = sorted({case.category for case in cases})
-        unknown = sorted(set(wanted) - set(available))
-        if unknown:
-            raise DatasetError(f"unknown JailbreakBench categories {unknown}; available: {available}")
-        return [case for case in cases if case.category in wanted]
-
-    def _sample(self, cases: list[AttackCase]) -> list[AttackCase]:
-        k = self.params.sample
-        if k is None:
-            return cases
-        if k > len(cases):
-            raise DatasetError(f"sample={k} exceeds the {len(cases)} available cases")
-        picked = random.Random(self._seed).sample(cases, k)
-        return sorted(picked, key=lambda case: case.metadata["row"])
