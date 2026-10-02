@@ -34,7 +34,7 @@ attacks:
   - type: jailbreakbench
     params:
       path: data/raw/jbb/harmful-behaviors.csv
-      expected_sha256: null    # paste the hash printed by scripts/fetch_jbb.py to pin the dataset
+      expected_sha256: 4a8ec6832056b631eb092dccc60d37a61c3d441268268888b3d006288afeffa1  # JBB-Behaviors as fetched 2026-10-02
       categories: null         # null = all categories
       sample: null             # integer = random subset drawn with run.seed
 
