@@ -57,7 +57,14 @@ def build_parser() -> argparse.ArgumentParser:
     label.add_argument("--relabel", action="store_true", help="revisit cases that already have a label")
     label.add_argument("--show-reasoning", action="store_true", help="also show the model's reasoning trace")
     agreement = commands.add_parser("agreement", help="score the run's judges against its human labels")
-    agreement.add_argument("run_dir", type=Path, help="run directory containing results.jsonl and labels.jsonl")
+    agreement.add_argument("run_dir", type=Path, help="run directory containing results.jsonl")
+    agreement.add_argument(
+        "--labels",
+        type=Path,
+        default=None,
+        help="labels.jsonl to use (default: the run's own). Labels from another run apply only where the "
+        "response text is identical, e.g. a re-judged replay of the same responses.",
+    )
     return parser
 
 
@@ -69,7 +76,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "label":
             return _label(args.run_dir, labeler=args.labeler, relabel=args.relabel, show_reasoning=args.show_reasoning)
         if args.command == "agreement":
-            return _agreement(args.run_dir)
+            return _agreement(args.run_dir, labels_path=args.labels)
         config = load_config(args.config, args.overrides)
         if args.command == "validate":
             return _validate(config)
@@ -102,11 +109,12 @@ def _label(run_dir: Path, *, labeler: str | None, relabel: bool, show_reasoning:
     return EXIT_OK
 
 
-def _agreement(run_dir: Path) -> int:
+def _agreement(run_dir: Path, *, labels_path: Path | None = None) -> int:
     results = _load_run_results(run_dir)
-    labels = LabelStore.for_run(run_dir).load()
+    store = LabelStore(labels_path) if labels_path is not None else LabelStore.for_run(run_dir)
+    labels = store.load()
     if not labels:
-        raise RedBenchError(f"no labels in {run_dir}; run `redbench label {run_dir}` first")
+        raise RedBenchError(f"no labels in {store.path}; run `redbench label <run_dir>` first")
     report = judge_agreement(results, labels)
     RunStore(run_dir).write_json(AGREEMENT_FILE, report)
     print(format_agreement(report))

@@ -23,8 +23,12 @@ class Components:
     secondary_judges: list[Judge] = field(default_factory=list)
 
     def close(self) -> None:
-        """Release resources held by components."""
+        """Release resources held by components (judges may hold model clients too)."""
         self.target.close()
+        for judge in (self.judge, *self.secondary_judges):
+            close = getattr(judge, "close", None)
+            if close is not None:
+                close()
 
 
 def build_components(config: RedBenchConfig, cache: ResponseCache | None) -> Components:

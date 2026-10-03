@@ -15,6 +15,7 @@ from redbench.cache import open_cache
 from redbench.config import RedBenchConfig, config_hash, dump_config
 from redbench.errors import RedBenchError
 from redbench.factory import build_components
+from redbench.judges.base import Judge
 from redbench.logging_setup import add_file_handler, remove_handler
 from redbench.metrics import compute_metrics
 from redbench.run_store import RunStore
@@ -30,6 +31,14 @@ class RunSummary:
     run_dir: Path
     metrics: dict[str, Any]
     interrupted: bool
+
+
+def _describe_judge(judge: Judge) -> dict[str, Any]:
+    describe = getattr(judge, "describe", None)
+    if describe is not None:
+        info: dict[str, Any] = describe()
+        return info
+    return {"type": judge.name, "success_definition": judge.success_definition}
 
 
 def _now() -> str:
@@ -67,14 +76,9 @@ def run_experiment(config: RedBenchConfig) -> RunSummary:
                     "cache": {"mode": config.run.cache.mode, "path": str(config.run.cache.path)},
                     "target": components.target.describe(),  # fails fast if the backend is down
                     "attack_sources": [source.describe() for source in components.sources],
-                    "judge": {
-                        "type": components.judge.name,
-                        "success_definition": components.judge.success_definition,
-                    },
-                    "secondary_judges": [
-                        {"type": judge.name, "success_definition": judge.success_definition}
-                        for judge in components.secondary_judges
-                    ],
+                    # describe() on model-backed judges also fails fast if their model is missing.
+                    "judge": _describe_judge(components.judge),
+                    "secondary_judges": [_describe_judge(judge) for judge in components.secondary_judges],
                     "n_cases": len(cases),
                 }
                 store.write_json(RunStore.MANIFEST_FILE, manifest)

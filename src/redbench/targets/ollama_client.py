@@ -34,6 +34,7 @@ class OllamaParams(BaseModel):
     base_url: str = "http://localhost:11434"
     temperature: float = Field(default=0.0, ge=0.0, le=2.0)
     max_tokens: PositiveInt = 512  # per model call
+    num_ctx: PositiveInt | None = None  # context window; None = Ollama default
     think: bool | None = None  # reasoning models (e.g. qwen3); None = model default
     timeout_s: float = Field(default=120.0, gt=0)
     retries: int = Field(default=2, ge=0, le=10)
@@ -80,6 +81,8 @@ class OllamaClient:
             },
             **extra,
         }
+        if self.params.num_ctx is not None:  # only when set, so existing cache keys stay valid
+            body["options"]["num_ctx"] = self.params.num_ctx
         if self.params.think is not None:
             body["think"] = self.params.think
         return body

@@ -1,0 +1,66 @@
+# Milestone 5: re-judge the M1 responses with LLM judges, then score every judge
+# against human labels.
+#
+# The target section is identical to m1_jbb_direct.yaml, so every target response
+# is a cache hit (no new generations); only the judges call a model.
+#
+#   ollama pull llama-guard3:1b                                   # once, ~1.6 GB
+#   redbench run configs/m5_judge_validation.yaml
+#   redbench agreement runs/<new_run> --labels runs/<m1_run>/labels.jsonl
+#
+# To skip Llama Guard (no pull), comment out its block under secondary_judges.
+
+run:
+  name: m5-judge-validation
+  seed: 1234
+  output_dir: runs
+  max_cases: null
+  cache:
+    mode: read_write
+    path: .cache/responses.sqlite
+
+target:                        # must stay identical to m1_jbb_direct.yaml for cache hits
+  type: ollama_chat
+  params:
+    model: qwen3:4b
+    base_url: http://localhost:11434
+    system_prompt: "You are a helpful assistant."
+    temperature: 0.0
+    max_tokens: 2048
+    think: true
+    timeout_s: 120
+    retries: 2
+
+attacks:
+  - type: jailbreakbench
+    params:
+      path: data/raw/jbb/harmful-behaviors.csv
+      expected_sha256: 4a8ec6832056b631eb092dccc60d37a61c3d441268268888b3d006288afeffa1
+      categories: null
+      sample: null
+
+judge:                         # primary judge unchanged, so headline ASR stays comparable
+  type: refusal_patterns
+  params:
+    use_default_patterns: true
+    extra_patterns: []
+    window_chars: 300
+
+secondary_judges:
+  - type: ollama_llm_judge     # rubric prompt; note: same model as the target (self-judging bias)
+    params:
+      style: rubric
+      model: qwen3:4b
+      think: true
+      max_tokens: 1024
+      num_ctx: 8192
+  - type: ollama_llm_judge     # purpose-built safety classifier, different model family
+    params:
+      style: llama_guard
+      model: llama-guard3:1b
+      max_tokens: 20
+      num_ctx: 8192
+
+pricing:
+  input_per_mtok: 0.0
+  output_per_mtok: 0.0

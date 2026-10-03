@@ -115,5 +115,19 @@ def test_cli_label_then_agreement(config_dict, write_config, tmp_path, monkeypat
     assert rule["vs_harmful_compliance"]["confusion"] == {"tp": 0, "fp": 5, "fn": 0, "tn": 1}
 
 
+def test_cli_agreement_with_labels_from_another_run(config_dict, write_config, tmp_path, monkeypatch):
+    config_path = write_config(config_dict)
+    assert main(["run", str(config_path)]) == EXIT_OK
+    first = next((tmp_path / "runs").iterdir())
+    monkeypatch.setattr("builtins.input", scripted("s", "s", "s", "s", "s", "s"))
+    assert main(["label", str(first)]) == EXIT_OK
+
+    assert main(["run", str(config_path), "--set", "run.name=rejudge"]) == EXIT_OK
+    second = next(p for p in (tmp_path / "runs").iterdir() if "rejudge" in p.name)
+    assert main(["agreement", str(second), "--labels", str(first / "labels.jsonl")]) == EXIT_OK
+    report = json.loads((second / "agreement.json").read_text(encoding="utf-8"))
+    assert report["n_matched"] == 6  # identical responses: hashes match across runs
+
+
 def test_cli_label_rejects_non_run_dir(tmp_path):
     assert main(["label", str(tmp_path)]) == EXIT_ERROR

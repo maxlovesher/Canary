@@ -22,6 +22,13 @@ def test_shipped_m1_config_is_valid():
     assert config.judge.type == "refusal_patterns"
 
 
+def test_shipped_m5_config_reuses_m1_target_for_cache_hits():
+    m1 = load_config(REPO_ROOT / "configs" / "m1_jbb_direct.yaml")
+    m5 = load_config(REPO_ROOT / "configs" / "m5_judge_validation.yaml")
+    assert m5.target == m1.target and m5.attacks == m1.attacks and m5.run.seed == m1.run.seed
+    assert [j.type for j in m5.secondary_judges] == ["ollama_llm_judge", "ollama_llm_judge"]
+
+
 @pytest.mark.parametrize(
     "mutate",
     [
