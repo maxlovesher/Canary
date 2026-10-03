@@ -60,6 +60,7 @@ class RedBenchConfig(_Strict):
 
     run: RunConfig
     target: ComponentSpec
+    defenses: list[ComponentSpec] = Field(default_factory=list)  # wrap the target, in order
     attacks: list[ComponentSpec] = Field(min_length=1)
     judge: ComponentSpec  # primary judge: its verdicts define ASR
     secondary_judges: list[ComponentSpec] = Field(default_factory=list)  # reported as extra ASR columns

@@ -1,0 +1,49 @@
+# Milestone 6 base config: undefended qwen3:4b on JBB harmful behaviors.
+# scripts/run_defense_matrix.py derives every condition from this file with
+# overrides (defense on/off, harmful vs benign dataset), so the target stays
+# identical to m1 and undefended / filter conditions reuse cached generations.
+#
+#   python scripts/fetch_jbb.py --split benign
+#   uv run python scripts/run_defense_matrix.py
+
+run:
+  name: m6-defenses
+  seed: 1234
+  output_dir: runs
+  max_cases: null
+  cache:
+    mode: read_write
+    path: .cache/responses.sqlite
+
+target:                        # identical to m1_jbb_direct.yaml (cache hits)
+  type: ollama_chat
+  params:
+    model: qwen3:4b
+    base_url: http://localhost:11434
+    system_prompt: "You are a helpful assistant."
+    temperature: 0.0
+    max_tokens: 2048
+    think: true
+    timeout_s: 120
+    retries: 2
+
+defenses: []                   # set per condition by the matrix script
+
+attacks:
+  - type: jailbreakbench
+    params:
+      path: data/raw/jbb/harmful-behaviors.csv
+      expected_sha256: 4a8ec6832056b631eb092dccc60d37a61c3d441268268888b3d006288afeffa1
+      categories: null
+      sample: null
+
+judge:
+  type: refusal_patterns
+  params:
+    use_default_patterns: true
+    extra_patterns: []
+    window_chars: 300
+
+pricing:
+  input_per_mtok: 0.0
+  output_per_mtok: 0.0

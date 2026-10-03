@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 # Packages whose __init__ imports (and thereby registers) the built-in components.
-_BUILTIN_PACKAGES = ("redbench.targets", "redbench.attacks", "redbench.judges")
+_BUILTIN_PACKAGES = ("redbench.targets", "redbench.attacks", "redbench.judges", "redbench.defenses")
 
 
 @dataclass(frozen=True)

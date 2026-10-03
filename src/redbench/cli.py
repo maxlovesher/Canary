@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 from collections.abc import Sequence
@@ -22,6 +23,7 @@ from redbench.metrics.agreement import judge_agreement
 from redbench.records import AttackResult
 from redbench.run_store import RunStore, read_results
 from redbench.runner import Runner
+from redbench.tradeoff import build_report, format_table, render_svg, summarize_condition
 
 logger = logging.getLogger("redbench")
 
@@ -65,6 +67,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="labels.jsonl to use (default: the run's own). Labels from another run apply only where the "
         "response text is identical, e.g. a re-judged replay of the same responses.",
     )
+    tradeoff = commands.add_parser("tradeoff", help="security-vs-utility table and chart across defense conditions")
+    tradeoff.add_argument(
+        "--pair",
+        nargs=3,
+        action="append",
+        required=True,
+        metavar=("LABEL", "HARMFUL_RUN", "BENIGN_RUN"),
+        help="one defense condition: its label, its harmful-prompt run dir and its benign-prompt run dir (repeatable)",
+    )
+    tradeoff.add_argument("--judge", default=None, help="secondary judge name to use for ASR (default: primary)")
+    tradeoff.add_argument("--out", type=Path, default=Path("reports/tradeoff"), help="output directory")
     return parser
 
 
@@ -77,6 +90,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _label(args.run_dir, labeler=args.labeler, relabel=args.relabel, show_reasoning=args.show_reasoning)
         if args.command == "agreement":
             return _agreement(args.run_dir, labels_path=args.labels)
+        if args.command == "tradeoff":
+            return _tradeoff(args.pair, judge=args.judge, out_dir=args.out)
         config = load_config(args.config, args.overrides)
         if args.command == "validate":
             return _validate(config)
@@ -84,6 +99,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     except RedBenchError as exc:
         logger.error("%s", exc)
         return EXIT_ERROR
+
+
+def _tradeoff(pairs: list[list[str]], *, judge: str | None, out_dir: Path) -> int:
+    summaries = [
+        summarize_condition(label, _load_run_results(Path(harmful)), _load_run_results(Path(benign)), judge=judge)
+        for label, harmful, benign in pairs
+    ]
+    report = build_report(summaries, judge=judge)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "tradeoff.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    (out_dir / "tradeoff.svg").write_text(render_svg(report), encoding="utf-8")
+    print(format_table(report))
+    print(f"\nwritten to {out_dir / 'tradeoff.json'} and {out_dir / 'tradeoff.svg'}")
+    return EXIT_OK
 
 
 def _load_run_results(run_dir: Path) -> list[AttackResult]:

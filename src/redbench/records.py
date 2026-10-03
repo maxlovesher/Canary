@@ -42,6 +42,7 @@ class TargetResponse(_Record):
     finish_reason: str | None = None  # e.g. "stop", or "length" when max_tokens cut it off
     reasoning: str | None = None  # separate reasoning trace from thinking models, if any
     trajectory: list[ToolCallRecord] = Field(default_factory=list)  # agent tool calls, in order
+    blocked_by: str | None = None  # defense that replaced/blocked this response, with its reason
     cached: bool = False
 
     @property

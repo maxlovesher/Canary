@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from redbench.attacks.base import ATTACK_SOURCES, AttackSource
 from redbench.cache import ResponseCache
 from redbench.config import RedBenchConfig
+from redbench.defenses import DEFENSES, DefendedTarget, Defense
 from redbench.errors import ComponentError
 from redbench.judges.base import JUDGES, Judge
 from redbench.registry import BuildContext, load_builtin_components
@@ -40,6 +41,9 @@ def build_components(config: RedBenchConfig, cache: ResponseCache | None) -> Com
     context = BuildContext(seed=config.run.seed, cache=cache)
     target: Target = TARGETS.build(config.target, context)
     try:
+        if config.defenses:
+            defenses: list[Defense] = [DEFENSES.build(spec, context) for spec in config.defenses]
+            target = DefendedTarget(target, defenses)
         sources: list[AttackSource] = [ATTACK_SOURCES.build(spec, context) for spec in config.attacks]
         judge: Judge = JUDGES.build(config.judge, context)
         secondary: list[Judge] = [JUDGES.build(spec, context) for spec in config.secondary_judges]
