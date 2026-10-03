@@ -116,8 +116,8 @@ def render_svg(report: dict[str, Any]) -> str:
     conditions = [
         c for c in report["conditions"] if c["asr"]["rate"] is not None and c["false_refusal"]["rate"] is not None
     ]
-    x_max = _axis_max([c["false_refusal"]["ci95_high"] for c in conditions])
-    y_max = _axis_max([c["asr"]["ci95_high"] for c in conditions])
+    x_max, x_ticks = nice_axis([c["false_refusal"]["ci95_high"] for c in conditions])
+    y_max, y_ticks = nice_axis([c["asr"]["ci95_high"] for c in conditions])
 
     def sx(v: float) -> float:
         return left + plot_w * v / x_max
@@ -133,13 +133,13 @@ def render_svg(report: dict[str, Any]) -> str:
         f'<text x="{left}" y="40" fill="#6b7280">Lower-left is better. Whiskers: Wilson 95% CI. '
         f"ASR judge: {html.escape(report['asr_judge'])}</text>",
     ]
-    for i in range(6):  # gridlines + tick labels
-        fx, fy = x_max * i / 5, y_max * i / 5
+    for fx in x_ticks:  # gridlines + tick labels
         out.append(f'<line x1="{sx(fx):.1f}" y1="{top}" x2="{sx(fx):.1f}" y2="{top + plot_h}" stroke="#e5e7eb"/>')
-        out.append(f'<line x1="{left}" y1="{sy(fy):.1f}" x2="{left + plot_w}" y2="{sy(fy):.1f}" stroke="#e5e7eb"/>')
         out.append(
             f'<text x="{sx(fx):.1f}" y="{top + plot_h + 16}" text-anchor="middle" fill="#6b7280">{fx:.0%}</text>'
         )
+    for fy in y_ticks:
+        out.append(f'<line x1="{left}" y1="{sy(fy):.1f}" x2="{left + plot_w}" y2="{sy(fy):.1f}" stroke="#e5e7eb"/>')
         out.append(f'<text x="{left - 8}" y="{sy(fy) + 4:.1f}" text-anchor="end" fill="#6b7280">{fy:.0%}</text>')
     out += [
         f'<line x1="{left}" y1="{top + plot_h}" x2="{left + plot_w}" y2="{top + plot_h}" stroke="#9ca3af"/>',
@@ -167,7 +167,21 @@ def render_svg(report: dict[str, Any]) -> str:
     return "\n".join(out) + "\n"
 
 
-def _axis_max(values: Sequence[float]) -> float:
-    """Round the largest value up to a tidy axis limit (at least 10%)."""
-    peak = max(values, default=0.0)
-    return min(1.0, max(0.1, math.ceil(peak * 1.1 * 20) / 20))
+NICE_STEPS = (0.01, 0.02, 0.025, 0.05, 0.1, 0.2, 0.25)
+
+
+def nice_axis(values: Sequence[float]) -> tuple[float, list[float]]:
+    """Axis limit and round tick positions (0 plus at most 5 steps) covering ``values``.
+
+    Steps come from ``NICE_STEPS`` so labels read 0/20/40% rather than 0/17/34%.
+    """
+    peak = max(max(values, default=0.0) * 1.05, 0.05)
+    count, step = 5, NICE_STEPS[-1]
+    for candidate in NICE_STEPS:
+        count = math.ceil(peak / candidate - 1e-9)
+        if count <= 5:
+            step = candidate
+            break
+    limit = min(1.0, count * step)
+    ticks = [round(i * step, 6) for i in range(count + 1) if i * step <= limit + 1e-9]
+    return limit, ticks

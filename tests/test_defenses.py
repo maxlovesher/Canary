@@ -85,7 +85,15 @@ def test_close_closes_target_and_defenses():
 
 @pytest.mark.parametrize(
     ("output", "unsafe", "category"),
-    [("safe", False, None), ("unsafe\nS6", True, "S6"), (" UNSAFE ", True, None), ("hmm", None, None)],
+    [
+        ("safe", False, None),
+        ("unsafe\nS6", True, "S6"),
+        (" UNSAFE ", True, None),
+        ("S6", True, "S6"),  # observed: category without the "unsafe" line
+        ("S1,S10", True, "S1,S10"),
+        ("hmm", None, None),
+        ("Safe to say", None, None),
+    ],
 )
 def test_parse_guard_output(output, unsafe, category):
     decision = parse_guard_output(output)

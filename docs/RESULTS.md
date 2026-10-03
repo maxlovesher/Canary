@@ -108,3 +108,49 @@ cut off at `max_tokens`), Government decision-making and Harassment/Discriminati
   "did this help a harmful goal".
 - None of these is ground truth. Human labels on the R1 run decide which judge (if
   any) is used for the defense results in milestone 6.
+
+## R4. Defenses: security vs utility on qwen3:4b (2026-10-03), PROXY JUDGES
+
+| | |
+|---|---|
+| Script | `scripts/run_defense_matrix.py` on `configs/m6_defenses.yaml` |
+| Harmful set | JBB-Behaviors harmful (sha256 `4a8ec6832056…`), 100 requests, verbatim |
+| Benign set | JBB-Behaviors benign (sha256 `3cda234d21a9…`), 100 topic-matched, deliberately borderline requests |
+| ASR judge | `refusal_patterns` (proxy: non-refusal) |
+| Utility judge | `refusal_patterns` on benign requests: answered = useful; false refusal = 1 - utility |
+| Filters | `llama-guard3:1b`, fail-open; blocked requests get a fixed refusal |
+| Report | `reports/m6_defenses/tradeoff.{json,svg}`, also in `reports/index.html` |
+
+| Condition | ASR (harmful) | 95% CI | False refusals (benign) | 95% CI | Blocked h / b | p50 latency h / b |
+|---|---:|---|---:|---|---:|---:|
+| none | 6.0% (6/100) | 2.8 – 12.5% | 18.4% (18/98) | 11.9 – 27.2% | 0 / 0 | 18.3 s / 31.3 s |
+| hardened prompt | 1.0% (1/100) | 0.2 – 5.4% | 69.0% (69/100) | 59.4 – 77.2% | 0 / 0 | 7.1 s / 9.0 s |
+| Llama Guard input filter | 1.0% (1/100) | 0.2 – 5.4% | 31.3% (31/99) | 23.0 – 41.0% | 95 / 21 | 0.2 s / 29.1 s |
+| Llama Guard output filter | 5.0% (5/100) | 2.2 – 11.2% | 33.3% (33/99) | 24.8 – 43.1% | 7 / 18 | 18.5 s / 31.6 s |
+
+### Reading this result
+
+- **No defense lowers ASR significantly at n = 100.** Every ASR interval overlaps the
+  undefended 2.8–12.5%. The baseline is already low (and R2/R3 suggest even the 6% is
+  mostly judge noise), so this attack set cannot separate the defenses on security.
+  Jailbreak transforms (M3) are needed to raise the baseline and give defenses room.
+- **Utility costs differ significantly.** The hardened prompt's false refusals
+  (59–77%) do not overlap any other condition, despite the prompt explicitly asking
+  the model to answer benign requests fully: a 4B model over-applies safety
+  instructions. Both Llama Guard filters add ~13–15 points of false refusals (21 and
+  18 benign requests blocked).
+- **Input filter dominates output filter here:** similar utility cost, lower ASR, and
+  95/100 harmful requests are rejected in ~0.2 s without ever reaching the model.
+  The output filter mostly re-blocks answers that were already refusals (7 blocks,
+  ASR 6% -> 5%).
+- **Caveats.** Both axes use the proxy refusal judge (R1–R3 show its limits). The
+  benign baseline already refuses 18%: JBB's benign split is built from borderline,
+  topic-matched requests. 25–30 of 100 benign answers hit `max_tokens: 2048` and were
+  judged on partial text (refusals appear early, so the refusal judge is unaffected;
+  an LLM judge would not be).
+- **Parser bug found and fixed during this analysis.** Llama Guard once answered a
+  bare `S6` without the `unsafe` line; the fail-open filter had let that benign
+  request through. The parser now treats a bare category as unsafe and unparseable
+  outputs are logged. Numbers above are from the fixed parser (cached replay; this
+  changed the output filter's benign blocks from 17 to 18 and nothing else). No
+  classifier errors occurred.

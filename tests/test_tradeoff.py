@@ -5,7 +5,7 @@ import pytest
 
 from redbench.cli import EXIT_OK, main
 from redbench.records import AttackResult, TargetResponse, Verdict
-from redbench.tradeoff import build_report, format_table, render_svg, summarize_condition
+from redbench.tradeoff import build_report, format_table, nice_axis, render_svg, summarize_condition
 from tests.helpers import make_case
 
 
@@ -62,6 +62,21 @@ def test_report_table_and_svg_are_well_formed():
     assert root.tag.endswith("svg")
     assert "filter &lt;&amp;&gt;" in svg
     assert svg.count("<circle") == 4  # 2 points + 2 legend markers
+
+
+@pytest.mark.parametrize(
+    ("values", "limit", "ticks"),
+    [
+        ([0.772], 1.0, [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]),
+        ([0.125], 0.15, [0.0, 0.05, 0.1, 0.15]),
+        ([0.0], 0.05, [0.0, 0.01, 0.02, 0.03, 0.04, 0.05]),
+        ([0.42], 0.5, [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]),
+    ],
+)
+def test_nice_axis_uses_round_ticks(values, limit, ticks):
+    got_limit, got_ticks = nice_axis(values)
+    assert got_limit == pytest.approx(limit)
+    assert got_ticks == pytest.approx(ticks)
 
 
 def test_svg_handles_empty_conditions():

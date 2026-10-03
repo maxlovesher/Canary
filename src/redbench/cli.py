@@ -85,6 +85,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--tradeoff", type=Path, action="append", default=None, help="tradeoff.json to include (default: reports/*/)"
     )
     report.add_argument("--min-cases", type=int, default=10, help="hide runs smaller than this (smoke tests)")
+    report.add_argument("--featured", default=None, metavar="RUN_ID", help="headline run (default: best baseline)")
     report.add_argument("--out", type=Path, default=Path("reports/index.html"))
     return parser
 
@@ -101,7 +102,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "tradeoff":
             return _tradeoff(args.pair, judge=args.judge, out_dir=args.out)
         if args.command == "report":
-            return _report(args.runs_dir, args.tradeoff, min_cases=args.min_cases, out=args.out)
+            return _report(args.runs_dir, args.tradeoff, min_cases=args.min_cases, featured=args.featured, out=args.out)
         config = load_config(args.config, args.overrides)
         if args.command == "validate":
             return _validate(config)
@@ -125,10 +126,14 @@ def _tradeoff(pairs: list[list[str]], *, judge: str | None, out_dir: Path) -> in
     return EXIT_OK
 
 
-def _report(runs_dir: Path, tradeoff_paths: list[Path] | None, *, min_cases: int, out: Path) -> int:
+def _report(
+    runs_dir: Path, tradeoff_paths: list[Path] | None, *, min_cases: int, featured: str | None, out: Path
+) -> int:
     runs = load_runs(runs_dir, min_cases=min_cases)
+    if featured is not None and not any(run.run_id == featured for run in runs):
+        raise RedBenchError(f"--featured {featured!r} is not a completed run in {runs_dir}")
     paths = tradeoff_paths if tradeoff_paths is not None else sorted(Path("reports").glob("*/tradeoff.json"))
-    page = build_report_html(runs, load_tradeoffs(paths))
+    page = build_report_html(runs, load_tradeoffs(paths), featured_run_id=featured)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(page, encoding="utf-8")
     print(f"report: {len(runs)} runs, {len(paths)} tradeoff studies -> {out}")

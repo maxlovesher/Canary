@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import logging
-import math
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from html import escape
@@ -17,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from redbench import __version__
+from redbench.tradeoff import nice_axis
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +70,12 @@ class RunInfo:
         return dict(sources[0])
 
     @property
+    def prompt_set(self) -> str:
+        """Short dataset name, e.g. ``harmful`` or ``benign`` for JBB-Behaviors files."""
+        stem = Path(str(self.dataset.get("path", "?"))).stem
+        return stem.removesuffix("-behaviors")
+
+    @property
     def n_results(self) -> int:
         return int(self.metrics.get("asr", {}).get("n_results", 0))
 
@@ -98,12 +104,20 @@ def load_runs(runs_dir: Path, *, min_cases: int = 10) -> list[RunInfo]:
     return sorted(runs.values(), key=lambda r: r.started_at, reverse=True)
 
 
-def pick_featured(runs: list[RunInfo]) -> RunInfo | None:
-    """Newest undefended run on harmful prompts (else the newest run)."""
-    for run in runs:
-        if not run.defenses and "harmful" in str(run.dataset.get("path", "")):
-            return run
-    return runs[0] if runs else None
+def pick_featured(runs: list[RunInfo], run_id: str | None = None) -> RunInfo | None:
+    """The headline run: ``run_id`` if given, else the best-evidenced baseline.
+
+    Among undefended runs on harmful prompts, pick the one whose exact responses
+    were scored by the most judges (the baseline that judge-validation runs replay);
+    ties go to the newest. Falls back to the newest run.
+    """
+    if run_id is not None:
+        return next((run for run in runs if run.run_id == run_id), None)
+    candidates = [run for run in runs if not run.defenses and run.prompt_set == "harmful"]
+    if not candidates:
+        return runs[0] if runs else None
+    # runs are newest-first and max() keeps the first maximum, so ties go to the newest
+    return max(candidates, key=lambda run: len(judge_rows(run, runs)))
 
 
 def judge_rows(featured: RunInfo, runs: list[RunInfo]) -> list[dict[str, Any]]:
@@ -191,11 +205,8 @@ def _scatter(report: dict[str, Any]) -> str:
     w, h, left, right, top, bottom = 640, 380, 64, 24, 20, 56
     pw, ph = w - left - right, h - top - bottom
 
-    def axis(values: list[float]) -> float:
-        return min(1.0, max(0.1, math.ceil(max(values) * 1.1 * 20) / 20))
-
-    xm = axis([c["false_refusal"]["ci95_high"] for c in conditions])
-    ym = axis([c["asr"]["ci95_high"] for c in conditions])
+    xm, x_ticks = nice_axis([c["false_refusal"]["ci95_high"] for c in conditions])
+    ym, y_ticks = nice_axis([c["asr"]["ci95_high"] for c in conditions])
 
     def sx(v: float) -> float:
         return left + pw * v / xm
@@ -204,13 +215,13 @@ def _scatter(report: dict[str, Any]) -> str:
         return top + ph * (1 - v / ym)
 
     parts = [f'<svg viewBox="0 0 {w} {h}" class="scatter" role="img" aria-label="Security versus utility scatter">']
-    for i in range(6):
-        fx, fy = xm * i / 5, ym * i / 5
+    for fx in x_ticks:
         parts.append(f'<line x1="{sx(fx):.1f}" y1="{top}" x2="{sx(fx):.1f}" y2="{top + ph}" class="grid"/>')
-        parts.append(f'<line x1="{left}" y1="{sy(fy):.1f}" x2="{left + pw}" y2="{sy(fy):.1f}" class="grid"/>')
         parts.append(
             f'<text x="{sx(fx):.1f}" y="{top + ph + 18}" class="tick" text-anchor="middle">{_pct(fx, 0)}</text>'
         )
+    for fy in y_ticks:
+        parts.append(f'<line x1="{left}" y1="{sy(fy):.1f}" x2="{left + pw}" y2="{sy(fy):.1f}" class="grid"/>')
         parts.append(f'<text x="{left - 8}" y="{sy(fy) + 4:.1f}" class="tick" text-anchor="end">{_pct(fy, 0)}</text>')
     parts.append(
         f'<text x="{left + pw / 2:.1f}" y="{h - 12}" class="axis-label" text-anchor="middle">'
@@ -244,10 +255,16 @@ def _section(glyph: str, title: str, subtitle: str, body: str) -> str:
     )
 
 
-def build_report_html(runs: list[RunInfo], tradeoffs: list[dict[str, Any]], *, generated_at: str | None = None) -> str:
+def build_report_html(
+    runs: list[RunInfo],
+    tradeoffs: list[dict[str, Any]],
+    *,
+    featured_run_id: str | None = None,
+    generated_at: str | None = None,
+) -> str:
     """Render the whole report page."""
     generated_at = generated_at or datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
-    featured = pick_featured(runs)
+    featured = pick_featured(runs, featured_run_id)
     sections: list[str] = []
 
     if featured is not None:
@@ -320,7 +337,7 @@ def build_report_html(runs: list[RunInfo], tradeoffs: list[dict[str, Any]], *, g
     if runs:
         run_rows = "".join(
             f"<tr><td><code>{escape(r.run_id)}</code></td><td>{escape(r.model)}</td>"
-            f"<td>{escape(', '.join(r.defenses) or 'none')}</td>"
+            f"<td>{escape(', '.join(r.defenses) or 'none')}</td><td>{escape(r.prompt_set)}</td>"
             f"<td class='num'>{r.n_results}</td><td class='num'>{_pct(r.metrics['asr']['overall']['rate'])}</td>"
             f"<td><code>{escape(str(r.manifest.get('config_hash', '')))}</code></td></tr>"
             for r in runs
@@ -329,9 +346,11 @@ def build_report_html(runs: list[RunInfo], tradeoffs: list[dict[str, Any]], *, g
             _section(
                 "源",
                 "Provenance",
-                "Every completed run. Each is reproducible from its config hash and the response cache.",
+                "Every completed run, reproducible from its config hash and the response cache. Success rate is "
+                "the attack success rate on harmful prompts and the answer rate on benign prompts.",
                 '<div class="table-scroll"><table class="runs"><thead><tr><th>Run</th><th>Model</th><th>Defenses</th>'
-                f"<th>n</th><th>ASR</th><th>Config</th></tr></thead><tbody>{run_rows}</tbody></table></div>",
+                "<th>Prompts</th><th>n</th><th>Success rate</th><th>Config</th></tr></thead>"
+                f"<tbody>{run_rows}</tbody></table></div>",
             )
         )
     else:
@@ -341,7 +360,7 @@ def build_report_html(runs: list[RunInfo], tradeoffs: list[dict[str, Any]], *, g
     models = sorted({r.model for r in runs})
     stats = (
         f'<div class="stat"><b>{len(runs)}</b><span>runs</span></div>'
-        f'<div class="stat"><b>{n_cases}</b><span>attacks judged</span></div>'
+        f'<div class="stat"><b>{n_cases}</b><span>cases judged</span></div>'
         f'<div class="stat"><b>{len(models)}</b><span>target models</span></div>'
         f'<div class="stat"><b>{len(tradeoffs)}</b><span>defense studies</span></div>'
     )

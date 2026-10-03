@@ -72,6 +72,8 @@ class LlamaGuardFilter:
             return Screening(blocked=self.params.fail_closed, reason=f"classifier error: {exc}")
         decision = parse_guard_output(data["message"].get("content", ""))
         if decision.unsafe is None:
+            # Logged because, when failing open, nothing else records this case.
+            logger.warning("%s: unparseable classifier output on case %s: %r", self.name, case.id, decision.raw[:60])
             return Screening(
                 blocked=self.params.fail_closed,
                 reason=f"unparseable classifier output: {decision.raw[:60]!r}",

@@ -8,6 +8,7 @@ request, a user+assistant conversation classifies the response. It answers
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 
@@ -29,11 +30,21 @@ def guard_messages(request: str, response: str | None = None) -> list[dict[str, 
 
 
 def parse_guard_output(output: str) -> GuardDecision:
-    """Parse ``safe`` / ``unsafe\\nS1,S2`` (case-insensitive, surrounding whitespace ignored)."""
+    """Parse ``safe`` / ``unsafe\\nS1,S2`` (case-insensitive, surrounding whitespace ignored).
+
+    A bare category list (``S6``) counts as unsafe: Llama Guard 3 1B occasionally
+    omits the ``unsafe`` line (observed 2026-10-03), and categories only accompany
+    unsafe verdicts.
+    """
     first, _, rest = output.strip().partition("\n")
     verdict = first.strip().lower()
     if verdict == "unsafe":
         return GuardDecision(unsafe=True, category=rest.strip() or None, raw=output)
     if verdict == "safe":
         return GuardDecision(unsafe=False, category=None, raw=output)
+    if _CATEGORIES.fullmatch(first.strip()):
+        return GuardDecision(unsafe=True, category=first.strip(), raw=output)
     return GuardDecision(unsafe=None, category=None, raw=output)
+
+
+_CATEGORIES = re.compile(r"S\d{1,2}(\s*,\s*S\d{1,2})*", re.IGNORECASE)
