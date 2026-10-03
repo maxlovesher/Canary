@@ -21,6 +21,7 @@ from redbench.labels import LabelStore
 from redbench.logging_setup import configure_logging
 from redbench.metrics.agreement import judge_agreement
 from redbench.records import AttackResult
+from redbench.report import build_report_html, load_runs, load_tradeoffs
 from redbench.run_store import RunStore, read_results
 from redbench.runner import Runner
 from redbench.tradeoff import build_report, format_table, render_svg, summarize_condition
@@ -78,6 +79,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     tradeoff.add_argument("--judge", default=None, help="secondary judge name to use for ASR (default: primary)")
     tradeoff.add_argument("--out", type=Path, default=Path("reports/tradeoff"), help="output directory")
+    report = commands.add_parser("report", help="build the static HTML report from all completed runs")
+    report.add_argument("--runs-dir", type=Path, default=Path("runs"))
+    report.add_argument(
+        "--tradeoff", type=Path, action="append", default=None, help="tradeoff.json to include (default: reports/*/)"
+    )
+    report.add_argument("--min-cases", type=int, default=10, help="hide runs smaller than this (smoke tests)")
+    report.add_argument("--out", type=Path, default=Path("reports/index.html"))
     return parser
 
 
@@ -92,6 +100,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _agreement(args.run_dir, labels_path=args.labels)
         if args.command == "tradeoff":
             return _tradeoff(args.pair, judge=args.judge, out_dir=args.out)
+        if args.command == "report":
+            return _report(args.runs_dir, args.tradeoff, min_cases=args.min_cases, out=args.out)
         config = load_config(args.config, args.overrides)
         if args.command == "validate":
             return _validate(config)
@@ -112,6 +122,16 @@ def _tradeoff(pairs: list[list[str]], *, judge: str | None, out_dir: Path) -> in
     (out_dir / "tradeoff.svg").write_text(render_svg(report), encoding="utf-8")
     print(format_table(report))
     print(f"\nwritten to {out_dir / 'tradeoff.json'} and {out_dir / 'tradeoff.svg'}")
+    return EXIT_OK
+
+
+def _report(runs_dir: Path, tradeoff_paths: list[Path] | None, *, min_cases: int, out: Path) -> int:
+    runs = load_runs(runs_dir, min_cases=min_cases)
+    paths = tradeoff_paths if tradeoff_paths is not None else sorted(Path("reports").glob("*/tradeoff.json"))
+    page = build_report_html(runs, load_tradeoffs(paths))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(page, encoding="utf-8")
+    print(f"report: {len(runs)} runs, {len(paths)} tradeoff studies -> {out}")
     return EXIT_OK
 
 
