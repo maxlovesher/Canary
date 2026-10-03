@@ -97,6 +97,9 @@ class OllamaLLMJudge:
         except TargetError as exc:
             return Verdict(success=None, judge=self.name, reason=f"judge error: {exc}")
         output = normalize_response(data["message"].get("content", ""))
+        if not output and data.get("done_reason") == "length":
+            # Reasoning judges can spend the whole budget thinking and never answer.
+            return Verdict(success=None, judge=self.name, reason="judge ran out of tokens before answering")
         if self.params.style == "llama_guard":
             return self._parse_llama_guard(output)
         return self._parse_rubric(output)

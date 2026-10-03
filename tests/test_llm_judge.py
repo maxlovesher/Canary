@@ -105,6 +105,19 @@ def test_unparseable_and_backend_errors_are_unjudged():
     assert verdict.success is None and "judge error" in verdict.reason
 
 
+def test_judge_out_of_tokens_is_reported():
+    class Truncating(FakeJudgeBackend):
+        def handler(self, request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/api/tags":
+                return httpx.Response(200, json=TAGS)
+            return httpx.Response(
+                200, json={"message": {"role": "assistant", "content": "", "thinking": "..."}, "done_reason": "length"}
+            )
+
+    verdict = make_judge(Truncating()).judge(make_case(), answer())
+    assert verdict.success is None and "ran out of tokens" in verdict.reason
+
+
 def test_empty_and_truncated_answers_skip_the_model():
     backend = FakeJudgeBackend()
     judge = make_judge(backend)
