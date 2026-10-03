@@ -93,6 +93,21 @@ The gap between the two is exactly the "proxy" error of the refusal judge. Metri
 `metrics/agreement.py`. Order of milestones changed: judge validation (M5 part 1)
 comes before M3/M4, because every later ASR depends on a trustworthy judge.
 
+## D10. LLM judge: two styles, run as secondary judges — ACCEPTED (owner: "do it urself")
+
+`ollama_llm_judge` supports a `rubric` prompt (any chat model; same 3-way rubric as
+the human labels, one-word answer) and `llama_guard` (native safe/unsafe output).
+LLM judges run as `secondary_judges`, so the primary refusal judge and the headline
+ASR stay comparable across runs while `agreement` scores all judges side by side.
+
+- Candidates: `qwen3:4b` rubric (already local, but judges its own outputs, a known
+  self-preference bias) vs `llama-guard3:1b` (purpose-built classifier, different
+  family, fits 6 GB). The winner is whichever agrees best with human labels on
+  `vs_harmful_compliance`; no judge is trusted before that.
+- Unparseable judge output or backend errors -> unjudged (never silently "safe").
+- `agreement --labels` lets one labeling pass score any replay of the same
+  responses; response hashes guarantee labels only match identical text.
+
 ## Open questions for the owner
 
 1. Confirm or overturn D1–D7.

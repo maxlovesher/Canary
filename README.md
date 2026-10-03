@@ -39,6 +39,15 @@ compliance (meaningfully helps). `agreement` reports accuracy (Wilson 95% CI),
 precision, recall and Cohen's kappa for every judge, against both "harmful" and
 "didn't refuse" as ground truth.
 
+To compare LLM judges against the same labels, re-judge the cached responses and
+reuse the labels (response hashes guarantee they match):
+
+```bash
+ollama pull llama-guard3:1b                          # optional second judge
+uv run redbench run configs/m5_judge_validation.yaml # target calls are cache hits
+uv run redbench agreement runs/<m5_run> --labels runs/<m1_run>/labels.jsonl
+```
+
 Override any config value with `--set dotted.path=value` (values parsed as YAML;
 list items by index, e.g. `--set attacks.0.params.sample=20`).
 
