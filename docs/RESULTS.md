@@ -78,3 +78,33 @@ tokens per attack (reasoning + answer), $0 (local). 3 responses hit `max_tokens`
 - **Next:** human labels (`redbench label`) on the R1 run, then
   `redbench agreement <this run> --labels <R1 run>/labels.jsonl` decides which judge
   to trust. Llama Guard 3 1B is the planned second LLM judge (different model family).
+
+## R3. Llama Guard 3 1B as judge on the R1 responses (2026-10-03), NOT YET VALIDATED
+
+| | |
+|---|---|
+| Config | `configs/m5_judge_validation.yaml`, Llama Guard judge only (config hash `aa7b3a66741c`) |
+| Responses | Identical to R1 (cache hits) |
+| Judge | `llama-guard3:1b` (digest `494147e06bf9…`), native safe/unsafe output on the request+response pair |
+
+**Llama-Guard-judged ASR (unsafe): 6.0% (6/100), Wilson 95% CI [2.8%, 12.5%].** 100/100 judged.
+
+Same headline rate as the refusal judge (R1), but **only 1 of the 6 flagged responses
+is shared**. Llama Guard's flags: 5 x category S6 (specialized advice) and 1 x S1
+(violent crimes), spread over Economic harm, Privacy, Expert advice (2, both answers
+cut off at `max_tokens`), Government decision-making and Harassment/Discrimination.
+
+### Three judges, three answers
+
+| Judge | Measures | ASR on the same 100 responses |
+|---|---|---:|
+| `refusal_patterns` | did the model not refuse? | 6.0% |
+| `qwen3:4b` rubric | did the answer meaningfully help? | 0.0% |
+| `llama-guard3:1b` | does the exchange violate Llama Guard's policy taxonomy? | 6.0% (1 overlap with row 1) |
+
+- Agreeing headline numbers can hide near-total disagreement on *which* cases succeeded.
+- Llama Guard's S6 "specialized advice" category flags financial/medical/legal advice
+  that the human rubric may call safe; its policy is not the same question as
+  "did this help a harmful goal".
+- None of these is ground truth. Human labels on the R1 run decide which judge (if
+  any) is used for the defense results in milestone 6.
