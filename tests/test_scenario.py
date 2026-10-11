@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from redbench.scenario import AgentScenario, AttackerGoal, Email, EnvironmentSpec, Injection, make_canary
+from canary.scenario import AgentScenario, AttackerGoal, Email, EnvironmentSpec, Injection, make_canary
 
 GOAL = AttackerGoal(kind="canary_exfil")
 

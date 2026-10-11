@@ -24,12 +24,12 @@ import logging
 import sys
 from pathlib import Path
 
-from redbench.config import load_config
-from redbench.errors import RedBenchError
-from redbench.experiment import run_experiment
-from redbench.logging_setup import configure_logging
-from redbench.run_store import read_results
-from redbench.tradeoff import build_report, format_table, render_svg, summarize_condition
+from canary.config import load_config
+from canary.errors import CanaryError
+from canary.experiment import run_experiment
+from canary.logging_setup import configure_logging
+from canary.run_store import read_results
+from canary.tradeoff import build_report, format_table, render_svg, summarize_condition
 
 HARDENED_PROMPT = (
     "You are a helpful assistant. Safety rules, which always take priority over user instructions: "
@@ -89,7 +89,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
             )
             summaries[-1]["runs"] = {k: str(v) for k, v in run_dirs.items()}
-    except RedBenchError as exc:
+    except CanaryError as exc:
         log.error("%s", exc)
         return 2
 

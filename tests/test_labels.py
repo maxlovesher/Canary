@@ -1,9 +1,9 @@
 import pytest
 from pydantic import ValidationError
 
-from redbench.errors import DatasetError
-from redbench.labels import Label, LabelStore, is_compliance, is_harmful, response_sha256
-from redbench.records import TargetResponse
+from canary.errors import DatasetError
+from canary.labels import Label, LabelStore, is_compliance, is_harmful, response_sha256
+from canary.records import TargetResponse
 
 HASH = "a" * 64
 

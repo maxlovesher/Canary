@@ -2,13 +2,13 @@ import io
 
 import pytest
 
-from redbench.attacks.jailbreakbench import JailbreakBenchSource
-from redbench.errors import DatasetError
-from redbench.judges.refusal_patterns import RefusalPatternJudge
-from redbench.records import AttackResult
-from redbench.registry import BuildContext
-from redbench.run_store import ResultWriter
-from redbench.runner import Runner
+from canary.attacks.jailbreakbench import JailbreakBenchSource
+from canary.errors import DatasetError
+from canary.judges.refusal_patterns import RefusalPatternJudge
+from canary.records import AttackResult
+from canary.registry import BuildContext
+from canary.run_store import ResultWriter
+from canary.runner import Runner
 from tests.helpers import JBB_SAMPLE, ScriptedTarget
 
 CTX = BuildContext(seed=0)

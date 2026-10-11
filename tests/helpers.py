@@ -11,10 +11,10 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from redbench.errors import TargetError
-from redbench.records import AttackCase, TargetResponse
-from redbench.registry import BuildContext, load_builtin_components
-from redbench.targets.base import TARGETS
+from canary.errors import TargetError
+from canary.records import AttackCase, TargetResponse
+from canary.registry import BuildContext, load_builtin_components
+from canary.targets.base import TARGETS
 
 FIXTURES = Path(__file__).parent / "fixtures"
 JBB_SAMPLE = FIXTURES / "jbb_sample.csv"

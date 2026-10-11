@@ -2,9 +2,9 @@ import hashlib
 
 import pytest
 
-from redbench.attacks.jailbreakbench import JailbreakBenchSource
-from redbench.errors import DatasetError
-from redbench.registry import BuildContext
+from canary.attacks.jailbreakbench import JailbreakBenchSource
+from canary.errors import DatasetError
+from canary.registry import BuildContext
 from tests.helpers import JBB_SAMPLE
 
 HEADER = "Index,Goal,Target,Behavior,Category,Source\n"

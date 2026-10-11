@@ -1,5 +1,5 @@
-from redbench.agents import TOOLS, MockEnvironment, execute_tool, tool_schemas
-from redbench.scenario import Email, EnvironmentSpec
+from canary.agents import TOOLS, MockEnvironment, execute_tool, tool_schemas
+from canary.scenario import Email, EnvironmentSpec
 
 ALL = list(TOOLS)
 

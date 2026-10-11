@@ -2,12 +2,12 @@ import itertools
 
 import pytest
 
-from redbench.config import PricingConfig
-from redbench.metrics import compute_metrics
-from redbench.metrics.asr import RateSummary, attack_success_rate
-from redbench.metrics.performance import performance_summary
-from redbench.metrics.stats import percentile, wilson_interval
-from redbench.records import AttackResult, TargetResponse, Verdict
+from canary.config import PricingConfig
+from canary.metrics import compute_metrics
+from canary.metrics.asr import RateSummary, attack_success_rate
+from canary.metrics.performance import performance_summary
+from canary.metrics.stats import percentile, wilson_interval
+from canary.records import AttackResult, TargetResponse, Verdict
 from tests.helpers import make_case
 
 _ids = itertools.count()

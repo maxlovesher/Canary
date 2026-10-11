@@ -2,9 +2,9 @@
 # judged by refusal patterns (proxy ASR = non-refusal rate).
 #
 #   python scripts/fetch_jbb.py                      # once
-#   redbench validate configs/m1_jbb_direct.yaml
-#   redbench run configs/m1_jbb_direct.yaml --set run.max_cases=5   # smoke run
-#   redbench run configs/m1_jbb_direct.yaml
+#   canary validate configs/m1_jbb_direct.yaml
+#   canary run configs/m1_jbb_direct.yaml --set run.max_cases=5   # smoke run
+#   canary run configs/m1_jbb_direct.yaml
 
 run:
   name: m1-jbb-direct

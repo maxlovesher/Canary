@@ -1,9 +1,9 @@
 import json
 
-from redbench.cli import EXIT_ERROR, EXIT_OK, main
-from redbench.labeling import format_result, pending_results, run_labeling
-from redbench.labels import LabelStore
-from redbench.records import AttackResult, TargetResponse, Verdict
+from canary.cli import EXIT_ERROR, EXIT_OK, main
+from canary.labeling import format_result, pending_results, run_labeling
+from canary.labels import LabelStore
+from canary.records import AttackResult, TargetResponse, Verdict
 from tests.helpers import make_case
 
 

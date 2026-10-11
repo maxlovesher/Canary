@@ -5,8 +5,8 @@
 # is a cache hit (no new generations); only the judges call a model.
 #
 #   ollama pull llama-guard3:1b                                   # once, ~1.6 GB
-#   redbench run configs/m5_judge_validation.yaml
-#   redbench agreement runs/<new_run> --labels runs/<m1_run>/labels.jsonl
+#   canary run configs/m5_judge_validation.yaml
+#   canary agreement runs/<new_run> --labels runs/<m1_run>/labels.jsonl
 #
 # To skip Llama Guard (no pull), comment out its block under secondary_judges.
 

@@ -3,9 +3,9 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from redbench.cli import EXIT_OK, main
-from redbench.records import AttackResult, TargetResponse, Verdict
-from redbench.tradeoff import build_report, format_table, nice_axis, render_svg, summarize_condition
+from canary.cli import EXIT_OK, main
+from canary.records import AttackResult, TargetResponse, Verdict
+from canary.tradeoff import build_report, format_table, nice_axis, render_svg, summarize_condition
 from tests.helpers import make_case
 
 

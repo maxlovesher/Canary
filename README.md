@@ -1,4 +1,4 @@
-# RedBench
+# Canary
 
 Config-driven red-teaming harness for LLMs, RAG pipelines, and tool-using agents.
 It attacks a system, measures attack success, and (in later milestones) measures how
@@ -22,7 +22,7 @@ the repo rather than hidden in a library.
 | Llama Guard input filter | ASR 1.0%, false refusals 18% → 31%; harmful requests rejected in 0.2 s |
 | Llama Guard output filter | ASR 5.0%, false refusals 18% → 33% |
 
-The HTML report (`uv run redbench report` → `reports/index.html`) shows all of it in one page.
+The HTML report (`uv run canary report` → `reports/index.html`) shows all of it in one page.
 
 ## Quickstart
 
@@ -34,16 +34,16 @@ uv run pytest                                        # offline test suite
 ollama serve                                         # in another terminal
 ollama pull qwen3:4b                                 # or any model; set target.params.model
 python scripts/fetch_jbb.py                          # JBB-Behaviors -> data/raw/jbb/ (gitignored)
-uv run redbench validate configs/m1_jbb_direct.yaml  # checks config + loads cases, no model calls
-uv run redbench run configs/m1_jbb_direct.yaml --set run.max_cases=5   # smoke run
-uv run redbench run configs/m1_jbb_direct.yaml
+uv run canary validate configs/m1_jbb_direct.yaml  # checks config + loads cases, no model calls
+uv run canary run configs/m1_jbb_direct.yaml --set run.max_cases=5   # smoke run
+uv run canary run configs/m1_jbb_direct.yaml
 ```
 
 ### Validating a judge against human labels
 
 ```bash
-uv run redbench label runs/<run_dir> --labeler <initials>   # blind, resumable; q to stop anytime
-uv run redbench agreement runs/<run_dir>                     # writes agreement.json
+uv run canary label runs/<run_dir> --labeler <initials>   # blind, resumable; q to stop anytime
+uv run canary agreement runs/<run_dir>                     # writes agreement.json
 ```
 
 Labels: `r` refusal, `s` safe compliance (engages but harmless/generic), `h` harmful
@@ -56,8 +56,8 @@ reuse the labels (response hashes guarantee they match):
 
 ```bash
 ollama pull llama-guard3:1b                          # optional second judge
-uv run redbench run configs/m5_judge_validation.yaml # target calls are cache hits
-uv run redbench agreement runs/<m5_run> --labels runs/<m1_run>/labels.jsonl
+uv run canary run configs/m5_judge_validation.yaml # target calls are cache hits
+uv run canary agreement runs/<m5_run> --labels runs/<m1_run>/labels.jsonl
 ```
 
 ### Defenses and the security-vs-utility tradeoff
@@ -65,13 +65,13 @@ uv run redbench agreement runs/<m5_run> --labels runs/<m1_run>/labels.jsonl
 ```bash
 python scripts/fetch_jbb.py --split benign           # benign prompts for utility
 uv run python scripts/run_defense_matrix.py          # 4 conditions x harmful/benign
-uv run redbench report                               # rebuild reports/index.html
+uv run canary report                               # rebuild reports/index.html
 ```
 
 Defenses go in a config's `defenses:` list and wrap the target: `llama_guard_filter`
 with `stage: input` (screens requests) or `stage: output` (screens answers). A
 hardened system prompt is just a different `target.params.system_prompt`.
-`redbench tradeoff --pair LABEL HARMFUL_RUN BENIGN_RUN ...` compares any runs.
+`canary tradeoff --pair LABEL HARMFUL_RUN BENIGN_RUN ...` compares any runs.
 
 Override any config value with `--set dotted.path=value` (values parsed as YAML;
 list items by index, e.g. `--set attacks.0.params.sample=20`).

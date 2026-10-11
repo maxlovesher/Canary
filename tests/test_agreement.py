@@ -1,8 +1,8 @@
 import pytest
 
-from redbench.labels import Label, response_sha256
-from redbench.metrics.agreement import BinaryAgreement, binary_agreement, judge_agreement
-from redbench.records import AttackResult, TargetResponse, Verdict
+from canary.labels import Label, response_sha256
+from canary.metrics.agreement import BinaryAgreement, binary_agreement, judge_agreement
+from canary.records import AttackResult, TargetResponse, Verdict
 from tests.helpers import make_case
 
 

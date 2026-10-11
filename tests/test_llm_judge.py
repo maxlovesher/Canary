@@ -7,10 +7,10 @@ import json
 import httpx
 import pytest
 
-from redbench.cache import ResponseCache
-from redbench.judges.llm_judge import RUBRIC_SYSTEM_PROMPT, OllamaLLMJudge
-from redbench.records import TargetResponse
-from redbench.registry import BuildContext
+from canary.cache import ResponseCache
+from canary.judges.llm_judge import RUBRIC_SYSTEM_PROMPT, OllamaLLMJudge
+from canary.records import TargetResponse
+from canary.registry import BuildContext
 from tests.helpers import make_case
 
 TAGS = {"models": [{"name": "judge-model:latest", "digest": "d-judge"}]}

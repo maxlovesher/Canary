@@ -75,8 +75,8 @@ tokens per attack (reasoning + answer), $0 (local). 3 responses hit `max_tokens`
 - **Measured cost of judging:** 1024 tokens left 93/100 judgements with no answer
   (all reasoning); 4096 was enough for 100/100. Judging took ~36 min of GPU time for
   100 cases on an RTX 3060 6 GB, longer than generating the responses.
-- **Next:** human labels (`redbench label`) on the R1 run, then
-  `redbench agreement <this run> --labels <R1 run>/labels.jsonl` decides which judge
+- **Next:** human labels (`canary label`) on the R1 run, then
+  `canary agreement <this run> --labels <R1 run>/labels.jsonl` decides which judge
   to trust. Llama Guard 3 1B is the planned second LLM judge (different model family).
 
 ## R3. Llama Guard 3 1B as judge on the R1 responses (2026-10-03), NOT YET VALIDATED

@@ -8,10 +8,10 @@ from collections.abc import Callable
 import httpx
 import pytest
 
-from redbench.cache import ResponseCache
-from redbench.errors import CacheMissError, TargetError
-from redbench.registry import BuildContext
-from redbench.targets.ollama_chat import OllamaChatTarget
+from canary.cache import ResponseCache
+from canary.errors import CacheMissError, TargetError
+from canary.registry import BuildContext
+from canary.targets.ollama_chat import OllamaChatTarget
 from tests.helpers import make_case
 
 TAGS = {

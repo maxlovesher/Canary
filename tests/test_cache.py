@@ -1,8 +1,8 @@
 import pytest
 
-from redbench.cache import ResponseCache, make_cache_key, open_cache
-from redbench.config import CacheConfig
-from redbench.errors import RedBenchError
+from canary.cache import ResponseCache, make_cache_key, open_cache
+from canary.config import CacheConfig
+from canary.errors import CanaryError
 
 
 def test_key_is_order_independent_and_content_sensitive():
@@ -32,7 +32,7 @@ def test_read_only_never_writes(tmp_path):
 
 
 def test_read_only_requires_existing_file(tmp_path):
-    with pytest.raises(RedBenchError, match="does not exist"):
+    with pytest.raises(CanaryError, match="does not exist"):
         ResponseCache(tmp_path / "missing.sqlite", read_only=True)
 
 

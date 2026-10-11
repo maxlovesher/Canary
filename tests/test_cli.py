@@ -3,8 +3,8 @@
 import json
 from pathlib import Path
 
-from redbench.cli import EXIT_ERROR, EXIT_INTERRUPTED, EXIT_OK, main
-from redbench.run_store import RunStore, read_results
+from canary.cli import EXIT_ERROR, EXIT_INTERRUPTED, EXIT_OK, main
+from canary.run_store import RunStore, read_results
 
 
 def only_run_dir(output_dir: Path) -> Path:

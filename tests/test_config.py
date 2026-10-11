@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from redbench.config import apply_overrides, config_hash, load_config
-from redbench.errors import ConfigError
+from canary.config import apply_overrides, config_hash, load_config
+from canary.errors import ConfigError
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 

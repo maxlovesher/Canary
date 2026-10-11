@@ -1,12 +1,12 @@
 import pytest
 from pydantic import BaseModel
 
-from redbench.attacks.base import ATTACK_SOURCES
-from redbench.config import ComponentSpec
-from redbench.errors import ComponentError
-from redbench.judges.base import JUDGES
-from redbench.registry import BuildContext, Registry
-from redbench.targets.base import TARGETS
+from canary.attacks.base import ATTACK_SOURCES
+from canary.config import ComponentSpec
+from canary.errors import ComponentError
+from canary.judges.base import JUDGES
+from canary.registry import BuildContext, Registry
+from canary.targets.base import TARGETS
 
 
 class _Thing:

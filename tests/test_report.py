@@ -3,9 +3,9 @@
 import json
 from html.parser import HTMLParser
 
-from redbench.cli import EXIT_OK, main
-from redbench.report import build_report_html, judge_rows, load_runs, pick_featured
-from redbench.tradeoff import build_report, summarize_condition
+from canary.cli import EXIT_OK, main
+from canary.report import build_report_html, judge_rows, load_runs, pick_featured
+from canary.tradeoff import build_report, summarize_condition
 from tests.test_tradeoff import results
 
 
@@ -62,7 +62,7 @@ def test_page_renders_sections_and_escapes(config_dict, write_config, tmp_path):
     text = " ".join(parsed.text)
     for heading in ("Attack", "Judges", "Defense", "Provenance"):
         assert heading in text
-    assert "红队" in text and "仅聚合数据" in text
+    assert "金丝雀" in text and "仅聚合数据" in text
     assert "&lt;filter&gt;" in page and "<filter>" not in page
     assert "svg" in parsed.tags and "script" not in parsed.tags  # static, no JS
     assert "placeholder" not in page.lower()  # never includes prompts or responses

@@ -4,11 +4,11 @@ import json
 
 import pytest
 
-from redbench.cli import EXIT_ERROR, EXIT_OK, main
-from redbench.config import PricingConfig
-from redbench.metrics import compute_metrics
-from redbench.records import AttackResult, TargetResponse, Verdict
-from redbench.run_store import RunStore
+from canary.cli import EXIT_ERROR, EXIT_OK, main
+from canary.config import PricingConfig
+from canary.metrics import compute_metrics
+from canary.records import AttackResult, TargetResponse, Verdict
+from canary.run_store import RunStore
 from tests.helpers import make_case
 
 

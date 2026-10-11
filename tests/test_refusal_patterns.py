@@ -1,9 +1,9 @@
 import pytest
 from pydantic import ValidationError
 
-from redbench.judges.refusal_patterns import RefusalPatternJudge, normalize_response
-from redbench.records import TargetResponse
-from redbench.registry import BuildContext
+from canary.judges.refusal_patterns import RefusalPatternJudge, normalize_response
+from canary.records import TargetResponse
+from canary.registry import BuildContext
 from tests.helpers import make_case
 
 

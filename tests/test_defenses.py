@@ -8,14 +8,14 @@ from typing import Any
 import httpx
 import pytest
 
-from redbench.cli import EXIT_OK, main
-from redbench.defenses import BLOCK_MESSAGE, DefendedTarget, Screening
-from redbench.defenses.guard_filter import LlamaGuardFilter
-from redbench.judges.refusal_patterns import RefusalPatternJudge
-from redbench.llama_guard import guard_messages, parse_guard_output
-from redbench.records import AttackCase, TargetResponse
-from redbench.registry import BuildContext
-from redbench.run_store import RunStore, read_results
+from canary.cli import EXIT_OK, main
+from canary.defenses import BLOCK_MESSAGE, DefendedTarget, Screening
+from canary.defenses.guard_filter import LlamaGuardFilter
+from canary.judges.refusal_patterns import RefusalPatternJudge
+from canary.llama_guard import guard_messages, parse_guard_output
+from canary.records import AttackCase, TargetResponse
+from canary.registry import BuildContext
+from canary.run_store import RunStore, read_results
 from tests.helpers import ScriptedTarget, make_case
 
 CTX = BuildContext(seed=0)

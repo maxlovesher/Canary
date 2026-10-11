@@ -25,7 +25,7 @@ raw `params` dict at build time. `config.py` never lists components.
 
 - Pro: adding a component is one file; no central union to edit.
 - Con: no single JSON schema for the whole config. Errors still surface before
-  any model call because `build_components` runs at startup (and `redbench validate`).
+  any model call because `build_components` runs at startup (and `canary validate`).
 
 ## D3. Response cache: SQLite (stdlib) — ACCEPTED
 
@@ -43,7 +43,7 @@ endpoints later. Retries transport errors and 408/429/5xx with exponential backo
 
 ## D5. Package layout — ACCEPTED
 
-Package `redbench` at the root of the `Canary` repo (src layout). RAGBench's
+Package `canary` at the root of the `Canary` repo (src layout). RAGBench's
 conventions were not available to mirror; happy to align once shared.
 
 ## D6. Default model: `qwen3:4b`, `think: true`, `max_tokens: 2048` — ACCEPTED (placeholder model)
