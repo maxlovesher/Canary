@@ -68,6 +68,7 @@ def main(argv: list[str] | None = None) -> int:
     log = logging.getLogger("run_defense_matrix")
 
     summaries = []
+    baseline = None  # (harmful, benign) results of the first condition
     try:
         for condition in args.conditions:
             run_dirs = {}
@@ -81,13 +82,10 @@ def main(argv: list[str] | None = None) -> int:
                     log.error("interrupted; stopping the matrix")
                     return 130
                 run_dirs[dataset] = summary.run_dir
-            summaries.append(
-                summarize_condition(
-                    condition,
-                    read_results(run_dirs["harmful"] / "results.jsonl"),
-                    read_results(run_dirs["benign"] / "results.jsonl"),
-                )
-            )
+            harmful = read_results(run_dirs["harmful"] / "results.jsonl")
+            benign = read_results(run_dirs["benign"] / "results.jsonl")
+            summaries.append(summarize_condition(condition, harmful, benign, baseline=baseline))
+            baseline = baseline or (harmful, benign)
             summaries[-1]["runs"] = {k: str(v) for k, v in run_dirs.items()}
     except CanaryError as exc:
         log.error("%s", exc)

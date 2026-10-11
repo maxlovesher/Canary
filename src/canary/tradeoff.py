@@ -15,13 +15,13 @@ from __future__ import annotations
 
 import html
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from canary.metrics.asr import RateSummary, attack_success_rate, primary_verdict, secondary_verdict
-from canary.metrics.stats import percentile
+from canary.metrics.stats import mcnemar_exact, percentile
 from canary.records import AttackResult
 
 PALETTE = ("#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#4b5563")
@@ -36,14 +36,48 @@ class Condition:
     benign_dir: Path
 
 
+def paired_test(
+    baseline: Sequence[AttackResult],
+    condition: Sequence[AttackResult],
+    outcome: Callable[[AttackResult], bool | None],
+) -> dict[str, Any]:
+    """Exact McNemar test of ``outcome`` on cases present (and judged) in both runs.
+
+    Pairs by case id, so it uses the fact that every condition saw the same prompts:
+    much more sensitive than comparing two independent confidence intervals.
+    """
+    base = {result.case.id: outcome(result) for result in baseline}
+    n_pairs = baseline_only = condition_only = 0
+    for result in condition:
+        before, after = base.get(result.case.id), outcome(result)
+        if before is None or after is None:
+            continue
+        n_pairs += 1
+        if before and not after:
+            baseline_only += 1
+        elif after and not before:
+            condition_only += 1
+    return {
+        "n_pairs": n_pairs,
+        "baseline_only": baseline_only,
+        "condition_only": condition_only,
+        "p_value": mcnemar_exact(baseline_only, condition_only),
+    }
+
+
 def summarize_condition(
     label: str,
     harmful: Sequence[AttackResult],
     benign: Sequence[AttackResult],
     *,
     judge: str | None = None,
+    baseline: tuple[Sequence[AttackResult], Sequence[AttackResult]] | None = None,
 ) -> dict[str, Any]:
-    """ASR, utility, false refusal rate, blocks and latency for one condition."""
+    """ASR, utility, false refusal rate, blocks and latency for one condition.
+
+    With ``baseline`` (its harmful and benign results), also reports paired McNemar
+    tests of attack success and of false refusals against it under ``vs_baseline``.
+    """
     verdict_of = primary_verdict if judge is None else secondary_verdict(judge)
     asr = attack_success_rate(harmful, verdict_of)["overall"]
     utility = attack_success_rate(benign, primary_verdict)["overall"]
@@ -52,6 +86,33 @@ def summarize_condition(
         if utility["n"]
         else RateSummary.from_counts(0, 0).to_dict()
     )
+    summary = _summary(label, harmful, benign, asr, utility, false_refusal)
+    if baseline is not None:
+        base_harmful, base_benign = baseline
+
+        def attack_succeeded(result: AttackResult) -> bool | None:
+            verdict = verdict_of(result)
+            return None if verdict is None else verdict.success
+
+        def refused(result: AttackResult) -> bool | None:
+            success = result.verdict.success
+            return None if success is None else not success
+
+        summary["vs_baseline"] = {
+            "asr": paired_test(base_harmful, harmful, attack_succeeded),
+            "false_refusal": paired_test(base_benign, benign, refused),
+        }
+    return summary
+
+
+def _summary(
+    label: str,
+    harmful: Sequence[AttackResult],
+    benign: Sequence[AttackResult],
+    asr: dict[str, Any],
+    utility: dict[str, Any],
+    false_refusal: dict[str, Any],
+) -> dict[str, Any]:
     return {
         "label": label,
         "asr": asr,
@@ -87,15 +148,29 @@ def format_table(report: dict[str, Any]) -> str:
     """Terminal table: one row per condition."""
     lines = [
         f"Security vs utility ({report['provenance']}; ASR judge: {report['asr_judge']})",
-        f"{'condition':<24} {'ASR':>7} {'95% CI':>17} {'false refusal':>14} {'95% CI':>17} {'blocked h/b':>12}",
+        f"{'condition':<24} {'ASR':>7} {'95% CI':>17} {'p':>7} {'false refusal':>14} {'95% CI':>17} {'p':>7} "
+        f"{'blocked h/b':>12}",
     ]
     for c in report["conditions"]:
+        paired = c.get("vs_baseline", {})
         lines.append(
-            f"{c['label'][:24]:<24} {_pct(c['asr']['rate']):>7} {_ci(c['asr']):>17} "
+            f"{c['label'][:24]:<24} {_pct(c['asr']['rate']):>7} {_ci(c['asr']):>17} {_p(paired.get('asr')):>7} "
             f"{_pct(c['false_refusal']['rate']):>14} {_ci(c['false_refusal']):>17} "
-            f"{c['blocked']['harmful']:>5}/{c['blocked']['benign']:<6}"
+            f"{_p(paired.get('false_refusal')):>7} {c['blocked']['harmful']:>5}/{c['blocked']['benign']:<6}"
         )
+    lines.append("p: exact McNemar test vs the first condition on the same prompts (paired by case).")
     return "\n".join(lines)
+
+
+def format_p(value: float | None) -> str:
+    """p-value for display: 3 significant digits, '<0.001' below that."""
+    if value is None:
+        return "—"
+    return "<0.001" if value < 0.001 else f"{value:.3f}"
+
+
+def _p(test: dict[str, Any] | None) -> str:
+    return "base" if test is None else format_p(test["p_value"])
 
 
 def _pct(value: float | None) -> str:

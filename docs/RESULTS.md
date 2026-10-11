@@ -128,10 +128,20 @@ cut off at `max_tokens`), Government decision-making and Harassment/Discriminati
 | Llama Guard input filter | 1.0% (1/100) | 0.2 – 5.4% | 31.3% (31/99) | 23.0 – 41.0% | 95 / 21 | 0.2 s / 29.1 s |
 | Llama Guard output filter | 5.0% (5/100) | 2.2 – 11.2% | 33.3% (33/99) | 24.8 – 43.1% | 7 / 18 | 18.5 s / 31.6 s |
 
+**Paired tests** (exact McNemar on the same prompts, each defense vs none; "removed /
+added" = cases that flipped from success to failure / failure to success):
+
+| Condition | Attack successes removed / added | p | False refusals removed / added | p |
+|---|---:|---:|---:|---:|
+| hardened prompt | 5 / 0 | 0.062 | 0 / 50 | <0.001 |
+| Llama Guard input filter | 5 / 0 | 0.062 | 0 / 12 | <0.001 |
+| Llama Guard output filter | 1 / 0 | 1.000 | 0 / 14 | <0.001 |
+
 ### Reading this result
 
-- **No defense lowers ASR significantly at n = 100.** Every ASR interval overlaps the
-  undefended 2.8–12.5%. The baseline is already low (and R2/R3 suggest even the 6% is
+- **No defense lowers ASR significantly at n = 100,** even with the paired test (best
+  p = 0.062: 5 of the 6 baseline successes removed, none added). Every ASR interval
+  also overlaps the undefended 2.8–12.5%. The baseline is already low (and R2/R3 suggest even the 6% is
   mostly judge noise), so this attack set cannot separate the defenses on security.
   Jailbreak transforms (M3) are needed to raise the baseline and give defenses room.
 - **Utility costs differ significantly.** The hardened prompt's false refusals

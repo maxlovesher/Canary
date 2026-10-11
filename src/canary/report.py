@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from canary import __version__
-from canary.tradeoff import nice_axis
+from canary.tradeoff import format_p, nice_axis
 
 logger = logging.getLogger(__name__)
 
@@ -242,6 +242,15 @@ def _scatter(report: dict[str, Any]) -> str:
     return "".join(parts)
 
 
+def _p_badge(condition: dict[str, Any], metric: str) -> str:
+    """Paired-test p-value under a rate; 'baseline' for the reference condition."""
+    test = condition.get("vs_baseline", {}).get(metric)
+    if test is None:
+        return "<span class='p'>baseline</span>"
+    significant = " sig" if test["p_value"] < 0.05 else ""
+    return f"<span class='p{significant}'>p = {format_p(test['p_value'])}</span>"
+
+
 def _agreement_line(scores: dict[str, Any]) -> str:
     kappa = scores.get("cohen_kappa")
     kappa_text = "—" if kappa is None else f"{kappa:.2f}"
@@ -318,8 +327,9 @@ def build_report_html(
 
     for report in tradeoffs:
         rows_html = "".join(
-            f"<tr><td><b>{escape(c['label'])}</b></td><td class='num'>{_pct(c['asr']['rate'])}</td>"
-            f"<td class='num'>{_pct(c['false_refusal']['rate'])}</td>"
+            f"<tr><td><b>{escape(c['label'])}</b></td><td class='num'>{_pct(c['asr']['rate'])}"
+            f"{_p_badge(c, 'asr')}</td>"
+            f"<td class='num'>{_pct(c['false_refusal']['rate'])}{_p_badge(c, 'false_refusal')}</td>"
             f"<td class='num muted'>{c['blocked']['harmful']} / {c['blocked']['benign']}</td></tr>"
             for c in report["conditions"]
         )
@@ -415,6 +425,8 @@ th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.1em;c
 td{border-bottom:1px solid var(--rule);padding:10px 10px 10px 0;vertical-align:top}
 td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 .muted{color:var(--muted);font-size:13px}
+.p{display:block;font-size:11px;color:var(--muted)}
+.p.sig{color:var(--red);font-weight:700}
 .role{display:block;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
 .callout{border-left:6px solid var(--red);background:var(--card);padding:12px 16px;margin-top:20px}
 .table-scroll{overflow-x:auto}

@@ -113,9 +113,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _tradeoff(pairs: list[list[str]], *, judge: str | None, out_dir: Path) -> int:
+    loaded = [(_load_run_results(Path(harmful)), _load_run_results(Path(benign))) for _, harmful, benign in pairs]
+    # The first pair is the baseline; every other condition gets paired tests against it.
     summaries = [
-        summarize_condition(label, _load_run_results(Path(harmful)), _load_run_results(Path(benign)), judge=judge)
-        for label, harmful, benign in pairs
+        summarize_condition(label, harmful, benign, judge=judge, baseline=None if index == 0 else loaded[0])
+        for index, ((label, _, _), (harmful, benign)) in enumerate(zip(pairs, loaded, strict=True))
     ]
     report = build_report(summaries, judge=judge)
     out_dir.mkdir(parents=True, exist_ok=True)

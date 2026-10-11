@@ -6,6 +6,26 @@ from collections.abc import Sequence
 Z_95 = 1.959963984540054  # two-sided 95% normal quantile
 
 
+def mcnemar_exact(b: int, c: int) -> float:
+    """Two-sided exact McNemar p-value for paired binary outcomes.
+
+    ``b`` and ``c`` are the discordant pair counts (outcome only under A, only
+    under B). Under the null hypothesis each discordant pair is equally likely to
+    fall either way, so ``p = 2 * P(X <= min(b, c))`` for ``X ~ Binomial(b + c, 1/2)``,
+    capped at 1. Exact, so valid for the small counts typical of per-defense deltas.
+
+    Raises:
+        ValueError: on negative counts.
+    """
+    if b < 0 or c < 0:
+        raise ValueError(f"discordant counts must be >= 0, got b={b}, c={c}")
+    n = b + c
+    if n == 0:
+        return 1.0
+    tail = sum(math.comb(n, i) for i in range(min(b, c) + 1)) / 2**n
+    return min(1.0, 2 * tail)
+
+
 def wilson_interval(successes: int, n: int, z: float = Z_95) -> tuple[float, float]:
     """Wilson score interval for a binomial proportion.
 

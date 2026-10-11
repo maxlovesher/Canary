@@ -4,8 +4,9 @@ import xml.etree.ElementTree as ET
 import pytest
 
 from canary.cli import EXIT_OK, main
+from canary.metrics.stats import mcnemar_exact
 from canary.records import AttackResult, TargetResponse, Verdict
-from canary.tradeoff import build_report, format_table, nice_axis, render_svg, summarize_condition
+from canary.tradeoff import build_report, format_table, nice_axis, paired_test, render_svg, summarize_condition
 from tests.helpers import make_case
 
 
@@ -39,6 +40,49 @@ def test_summarize_condition_rates():
     assert summary["false_refusal"]["rate"] == pytest.approx(0.25)
     assert summary["blocked"] == {"harmful": 2, "benign": 0}
     assert summary["latency_ms_p50"]["harmful"] == pytest.approx(101.5)
+
+
+@pytest.mark.parametrize(
+    ("b", "c", "expected"),
+    [
+        (0, 0, 1.0),
+        (5, 0, 2 / 2**5),  # all 5 discordant pairs one way: 0.0625
+        (1, 9, 2 * (1 + 10) / 2**10),  # 0.021484375
+        (10, 10, 1.0),  # symmetric: capped at 1
+    ],
+)
+def test_mcnemar_exact_reference_values(b, c, expected):
+    assert mcnemar_exact(b, c) == pytest.approx(expected)
+    assert mcnemar_exact(c, b) == pytest.approx(expected)  # two-sided
+
+
+def test_mcnemar_rejects_negative_counts():
+    with pytest.raises(ValueError):
+        mcnemar_exact(-1, 2)
+
+
+def test_paired_test_pairs_by_case_id_and_skips_unjudged():
+    baseline = results([True, True, False, None])  # c0..c3
+    condition = list(reversed(results([False, True, True, True])))  # order must not matter
+    test = paired_test(baseline, condition, lambda r: r.verdict.success)
+    # c0: T->F (baseline only), c1: T->T, c2: F->T (condition only), c3: unjudged in baseline
+    assert test == {"n_pairs": 3, "baseline_only": 1, "condition_only": 1, "p_value": 1.0}
+
+
+def test_summarize_condition_with_baseline_reports_paired_tests():
+    base_h = results([True] * 6 + [False] * 4)
+    base_b = results([True] * 10, prefix="b")
+    defended_h = results([False] * 10)  # removes all 6 successes
+    defended_b = results([False] * 8 + [True] * 2, prefix="b")  # refuses 8 benign
+    summary = summarize_condition("filter", defended_h, defended_b, baseline=(base_h, base_b))
+    asr, fr = summary["vs_baseline"]["asr"], summary["vs_baseline"]["false_refusal"]
+    assert (asr["baseline_only"], asr["condition_only"]) == (6, 0)
+    assert asr["p_value"] == pytest.approx(2 / 2**6)
+    assert (fr["baseline_only"], fr["condition_only"]) == (0, 8)
+    assert fr["p_value"] == pytest.approx(2 / 2**8)
+    assert "vs_baseline" not in summarize_condition("none", base_h, base_b)
+    table = format_table(build_report([summarize_condition("none", base_h, base_b), summary], judge=None))
+    assert "base" in table and "0.031" in table and "0.008" in table
 
 
 def test_secondary_judge_can_define_asr():

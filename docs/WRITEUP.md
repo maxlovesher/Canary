@@ -65,9 +65,11 @@ Full tables, provenance and caveats: [RESULTS.md](RESULTS.md) (R1–R4).
 2. **Defenses must be priced in utility.** The hardened prompt told the model to answer
    benign requests fully and it still refused 69% of them. Without the benign run it
    would have looked like the best defense.
-3. **Small differences need confidence intervals.** With n = 100 and a 6% baseline, no
-   defense lowered ASR significantly; the utility differences were significant. A
-   single ASR number would have suggested the opposite.
+3. **Small differences need the right test.** Every condition saw the same 100
+   prompts, so Canary pairs them (exact McNemar). Even paired, no defense lowered ASR
+   significantly (best p = 0.062: 5 baseline successes removed, none added), while
+   every defense added false refusals with p < 0.001. A single ASR number would have
+   suggested the opposite.
 4. **Reasoning models break naive harnesses.** qwen3 ignores `think: false` (reasoning
    leaks into the answer), and reasoning can consume the whole token budget: an
    LLM judge with 1,024 tokens returned no verdict on 93 of 100 cases. Canary now
