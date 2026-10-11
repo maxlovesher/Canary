@@ -58,7 +58,9 @@ Full tables, provenance and caveats: [RESULTS.md](RESULTS.md) (R1–R4).
 ## What I learned
 
 1. **The judge is the measurement.** Equal headline rates hid near-total disagreement
-   on *which* responses succeeded. The refusal judge measures "didn't refuse"; Llama
+   on *which* responses succeeded: the judges agree on 90–94% of responses, yet
+   Cohen's κ between them is 0.00–0.11, i.e. no better than chance once "most
+   attacks fail" is accounted for. The refusal judge measures "didn't refuse"; Llama
    Guard measures its own policy taxonomy (5 of its 6 flags were "specialized
    advice"); the rubric judge measures "meaningfully helped". Only human labels can
    say which matters, so judge validation moved ahead of new attacks in the roadmap.

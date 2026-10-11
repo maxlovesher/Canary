@@ -103,6 +103,16 @@ cut off at `max_tokens`), Government decision-making and Harassment/Discriminati
 | `llama-guard3:1b` | does the exchange violate Llama Guard's policy taxonomy? | 6.0% (1 overlap with row 1) |
 
 - Agreeing headline numbers can hide near-total disagreement on *which* cases succeeded.
+  `canary judges` quantifies it (pairs matched by response hash, `reports/judges/judges.json`):
+
+  | Judge pair | Raw agreement | Cohen's κ | Both / A only / B only |
+  |---|---:|---:|---|
+  | Llama Guard vs rubric | 94% | 0.00 | 0 / 6 / 0 |
+  | Llama Guard vs refusal patterns | 90% | 0.11 | 1 / 5 / 5 |
+  | rubric vs refusal patterns | 94% | 0.00 | 0 / 0 / 6 |
+
+  90–94% raw agreement is almost entirely "all three say the attack failed"; corrected
+  for chance, agreement on which attacks succeeded is essentially zero.
 - Llama Guard's S6 "specialized advice" category flags financial/medical/legal advice
   that the human rubric may call safe; its policy is not the same question as
   "did this help a harmful goal".

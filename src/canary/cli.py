@@ -19,7 +19,7 @@ from canary.factory import build_components
 from canary.labeling import run_labeling
 from canary.labels import LabelStore
 from canary.logging_setup import configure_logging
-from canary.metrics.agreement import judge_agreement
+from canary.metrics.agreement import inter_judge_agreement, judge_agreement
 from canary.records import AttackResult
 from canary.report import build_report_html, load_runs, load_tradeoffs
 from canary.run_store import RunStore, read_results
@@ -87,6 +87,9 @@ def build_parser() -> argparse.ArgumentParser:
     report.add_argument("--min-cases", type=int, default=10, help="hide runs smaller than this (smoke tests)")
     report.add_argument("--featured", default=None, metavar="RUN_ID", help="headline run (default: best baseline)")
     report.add_argument("--out", type=Path, default=Path("reports/index.html"))
+    judges = commands.add_parser("judges", help="pairwise agreement between judges on the same responses")
+    judges.add_argument("run_dirs", type=Path, nargs="+", help="runs whose verdicts to pool (matched by response)")
+    judges.add_argument("--out", type=Path, default=Path("reports/judges/judges.json"))
     return parser
 
 
@@ -101,6 +104,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _agreement(args.run_dir, labels_path=args.labels)
         if args.command == "tradeoff":
             return _tradeoff(args.pair, judge=args.judge, out_dir=args.out)
+        if args.command == "judges":
+            return _judges(args.run_dirs, out=args.out)
         if args.command == "report":
             return _report(args.runs_dir, args.tradeoff, min_cases=args.min_cases, featured=args.featured, out=args.out)
         config = load_config(args.config, args.overrides)
@@ -128,6 +133,32 @@ def _tradeoff(pairs: list[list[str]], *, judge: str | None, out_dir: Path) -> in
     return EXIT_OK
 
 
+def _judges(run_dirs: list[Path], *, out: Path) -> int:
+    report = inter_judge_agreement([_load_run_results(run_dir) for run_dir in run_dirs])
+    report["runs"] = [run_dir.name for run_dir in run_dirs]
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print(format_judges(report))
+    print(f"\nwritten to {out}")
+    return EXIT_OK
+
+
+def format_judges(report: dict[str, Any]) -> str:
+    """Terminal table of pairwise judge agreement."""
+    lines = [
+        f"Judge vs judge on the same responses ({report['provenance']}; consistency, not correctness)",
+        "successes per judge: " + ", ".join(f"{k}={v}" for k, v in report["positives"].items()),
+        f"{'judge A':<34} {'judge B':<34} {'n':>4} {'agree':>7} {'kappa':>6}  both/A-only/B-only",
+    ]
+    for p in report["pairs"]:
+        kappa = "n/a" if p["cohen_kappa"] is None else f"{p['cohen_kappa']:.2f}"
+        lines.append(
+            f"{p['a'][:34]:<34} {p['b'][:34]:<34} {p['n']:>4} {_fmt_opt(p['agreement']):>7} {kappa:>6}  "
+            f"{p['both']}/{p['a_only']}/{p['b_only']}"
+        )
+    return "\n".join(lines)
+
+
 def _report(
     runs_dir: Path, tradeoff_paths: list[Path] | None, *, min_cases: int, featured: str | None, out: Path
 ) -> int:
@@ -135,7 +166,8 @@ def _report(
     if featured is not None and not any(run.run_id == featured for run in runs):
         raise CanaryError(f"--featured {featured!r} is not a completed run in {runs_dir}")
     paths = tradeoff_paths if tradeoff_paths is not None else sorted(Path("reports").glob("*/tradeoff.json"))
-    page = build_report_html(runs, load_tradeoffs(paths), featured_run_id=featured)
+    judge_reports = load_tradeoffs(sorted(Path("reports").glob("*/judges.json")))  # same JSON loader
+    page = build_report_html(runs, load_tradeoffs(paths), featured_run_id=featured, judge_reports=judge_reports)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(page, encoding="utf-8")
     print(f"report: {len(runs)} runs, {len(paths)} tradeoff studies -> {out}")

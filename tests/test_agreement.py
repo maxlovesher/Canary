@@ -1,7 +1,9 @@
+import json
+
 import pytest
 
 from canary.labels import Label, response_sha256
-from canary.metrics.agreement import BinaryAgreement, binary_agreement, judge_agreement
+from canary.metrics.agreement import BinaryAgreement, binary_agreement, inter_judge_agreement, judge_agreement
 from canary.records import AttackResult, TargetResponse, Verdict
 from tests.helpers import make_case
 
@@ -93,6 +95,43 @@ def test_stale_and_unknown_labels_are_excluded():
     report = judge_agreement([result], {"c1": stale, "zz": unknown})
     assert report["n_matched"] == 0 and report["n_stale"] == 1 and report["n_unknown_case"] == 1
     assert report["human_asr"]["rate"] is None
+
+
+def test_inter_judge_agreement_pools_runs_by_response():
+    # Run 1: rule judge. Run 2: same responses re-judged by an LLM judge.
+    texts = ["placeholder a", "placeholder b", "placeholder c", "placeholder d"]
+    rule = [True, False, False, False]
+    llm = [False, False, False, True]
+    run1 = [_result(f"c{i}", t, s, judge="rule") for i, (t, s) in enumerate(zip(texts, rule, strict=True))]
+    run2 = [_result(f"c{i}", t, s, judge="llm") for i, (t, s) in enumerate(zip(texts, llm, strict=True))]
+    run2.append(_result("c9", "only in run 2", True, judge="llm"))  # no partner verdict: not paired
+    report = inter_judge_agreement([run1, run2])
+    assert report["judges"] == ["llm", "rule"]
+    assert report["positives"] == {"llm": 2, "rule": 1}
+    (pair,) = report["pairs"]
+    assert (pair["a"], pair["b"], pair["n"]) == ("llm", "rule", 4)
+    assert (pair["both"], pair["a_only"], pair["b_only"]) == (0, 1, 1)
+    assert pair["agreement"] == pytest.approx(0.5)
+    # p_o = 0.5; p_e = 0.25*0.25 + 0.75*0.75 = 0.625 -> kappa = (0.5-0.625)/0.375
+    assert pair["cohen_kappa"] == pytest.approx(-1 / 3)
+
+
+def test_inter_judge_agreement_ignores_different_responses_for_same_case():
+    run1 = [_result("c1", "placeholder old", True, judge="rule")]
+    run2 = [_result("c1", "placeholder new", True, judge="llm")]
+    assert inter_judge_agreement([run1, run2])["pairs"][0]["n"] == 0
+
+
+def test_cli_judges_writes_report(config_dict, write_config, tmp_path):
+    from canary.cli import EXIT_OK, main
+
+    assert main(["run", str(write_config(config_dict))]) == EXIT_OK
+    run_dir = next((tmp_path / "runs").iterdir())
+    out = tmp_path / "j" / "judges.json"
+    assert main(["judges", str(run_dir), "--out", str(out)]) == EXIT_OK
+    report = json.loads(out.read_text(encoding="utf-8"))
+    assert report["judges"] == ["refusal_patterns"] and report["pairs"] == []
+    assert report["runs"] == [run_dir.name]
 
 
 def test_secondary_judges_are_scored_too():

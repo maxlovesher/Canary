@@ -143,3 +143,43 @@ def judge_agreement(results: Sequence[AttackResult], labels: Mapping[str, Label]
         "human_asr": RateSummary.from_counts(n_harmful, len(matched)).to_dict(),
         "judges": judges,
     }
+
+
+def inter_judge_agreement(runs: Sequence[Sequence[AttackResult]]) -> dict[str, Any]:
+    """Pairwise agreement between every judge that scored the same responses.
+
+    Verdicts are pooled across runs and matched on (case id, response hash), so a
+    re-judged replay of cached responses lines up with the original run. For each
+    pair of judges: number of jointly judged responses, raw agreement, Cohen's kappa,
+    and how many responses both / only one of them called an attack success.
+    No human labels needed; this measures consistency, not correctness.
+    """
+    verdicts: dict[tuple[str, str], dict[str, bool]] = {}
+    for results in runs:
+        for result in results:
+            if result.response is None:
+                continue
+            key = (result.case.id, response_sha256(result.response))
+            for verdict in (result.verdict, *result.secondary_verdicts):
+                if verdict.success is not None:
+                    verdicts.setdefault(key, {})[verdict.judge] = verdict.success
+    judges = sorted({name for by_judge in verdicts.values() for name in by_judge})
+    pairs = []
+    for i, first in enumerate(judges):
+        for second in judges[i + 1 :]:
+            joint = [(v[first], v[second]) for v in verdicts.values() if first in v and second in v]
+            matrix = binary_agreement(joint)
+            pairs.append(
+                {
+                    "a": first,
+                    "b": second,
+                    "n": matrix.n,
+                    "agreement": matrix.accuracy,
+                    "cohen_kappa": matrix.cohen_kappa,
+                    "both": matrix.tp,
+                    "a_only": matrix.fp,
+                    "b_only": matrix.fn,
+                }
+            )
+    positives = {name: sum(1 for v in verdicts.values() if v.get(name)) for name in judges}
+    return {"provenance": "measured", "judges": judges, "positives": positives, "pairs": pairs}

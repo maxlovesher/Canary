@@ -242,6 +242,30 @@ def _scatter(report: dict[str, Any]) -> str:
     return "".join(parts)
 
 
+def _kappa_text(kappa: float | None) -> str:
+    return "—" if kappa is None else f"{kappa:.2f}"
+
+
+def _judge_pairs_html(judge_reports: list[dict[str, Any]]) -> str:
+    """Pairwise judge agreement tables (raw agreement next to chance-corrected kappa)."""
+    blocks = []
+    for report in judge_reports:
+        rows = "".join(
+            f"<tr><td>{escape(p['a'])}</td><td>{escape(p['b'])}</td><td class='num'>{p['n']}</td>"
+            f"<td class='num'>{_pct(p['agreement'])}</td>"
+            f"<td class='num'><b>{_kappa_text(p['cohen_kappa'])}</b></td>"
+            f"<td class='num muted'>{p['both']} / {p['a_only']} / {p['b_only']}</td></tr>"
+            for p in report.get("pairs", [])
+        )
+        blocks.append(
+            "<h3>Judge vs judge</h3><p class='lede'>Raw agreement looks high because most responses are "
+            "refusals; Cohen's κ corrects for chance (0 = no better than chance, 1 = perfect).</p>"
+            '<table class="judges"><thead><tr><th>Judge A</th><th>Judge B</th><th>n</th><th>Agree</th>'
+            f"<th>κ</th><th>Both / A only / B only</th></tr></thead><tbody>{rows}</tbody></table>"
+        )
+    return "".join(blocks)
+
+
 def _p_badge(condition: dict[str, Any], metric: str) -> str:
     """Paired-test p-value under a rate; 'baseline' for the reference condition."""
     test = condition.get("vs_baseline", {}).get(metric)
@@ -269,9 +293,10 @@ def build_report_html(
     tradeoffs: list[dict[str, Any]],
     *,
     featured_run_id: str | None = None,
+    judge_reports: list[dict[str, Any]] | None = None,
     generated_at: str | None = None,
 ) -> str:
-    """Render the whole report page."""
+    """Render the whole report page. ``judge_reports`` are ``canary judges`` outputs."""
     generated_at = generated_at or datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     featured = pick_featured(runs, featured_run_id)
     sections: list[str] = []
@@ -321,7 +346,7 @@ def build_report_html(
                 "Judges",
                 "Every judge that scored the headline run's exact responses.",
                 f'<table class="judges"><thead><tr><th>Judge</th><th>Success means</th><th>ASR</th><th></th></tr>'
-                f"</thead><tbody>{table}</tbody></table>{agreement}",
+                f"</thead><tbody>{table}</tbody></table>{_judge_pairs_html(judge_reports or [])}{agreement}",
             )
         )
 

@@ -19,7 +19,7 @@ the repo rather than hidden in a library.
 | Finding (proxy judges, n = 100 each) | |
 |---|---|
 | Undefended JailbreakBench direct requests | ASR 6.0% [2.8, 12.5] |
-| Three judges on the same responses | 6.0% / 0.0% / 6.0%, sharing just 1 flagged case |
+| Three judges on the same responses | 6.0% / 0.0% / 6.0%, sharing just 1 flagged case; pairwise κ 0.00–0.11 |
 | Hardened system prompt | ASR 1.0%, but false refusals 18% → 69% |
 | Llama Guard input filter | ASR 1.0%, false refusals 18% → 31%; harmful requests rejected in 0.2 s |
 | Llama Guard output filter | ASR 5.0%, false refusals 18% → 33% |
