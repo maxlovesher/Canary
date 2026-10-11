@@ -123,6 +123,23 @@ ASR stay comparable across runs while `agreement` scores all judges side by side
 - The hardened prompt explicitly tells the model to answer benign requests fully,
   so its utility cost is not trivially "refuse more of everything".
 
+## D12. Agent-only defenses as tool-layer components — ACCEPTED (owner: "go finish it")
+
+Built ahead of the agent loop (milestone 2) so it can use them directly:
+
+- `ToolPolicy` (least privilege): tool allowlist, allowed `send_email` recipient
+  domains, allowed `fetch_url` hosts (http/https only, subdomains allowed, suffix
+  matches only on label boundaries). Checked inside `execute_tool` after argument
+  validation; a denied call returns `error: blocked by tool policy: ...` and never
+  touches the mock environment, so trajectories show *attempted* vs *executed* actions.
+- `Spotlight` (Hines et al. 2024): `delimit` wraps tool output in a boundary tag with
+  a per-run nonce and strips that tag from the content so injected text cannot close
+  it; `datamark` replaces whitespace with a marker character. Each mode supplies the
+  matching system-prompt sentence. The nonce is derived from the run seed, keeping
+  agent runs replayable from the cache.
+- Not measured yet: both need the agent target and injection scenarios to produce ASR
+  and utility numbers.
+
 ## Open questions for the owner
 
 1. Confirm or overturn D1–D7.
