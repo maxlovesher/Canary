@@ -147,7 +147,9 @@ the provider's terms. Raw prompts, responses, datasets and caches stay local
 5. 🟡 LLM judges built (rubric + Llama Guard), labeling + agreement tooling built;
    waiting on ~100 human labels
 6. ✅ Defenses (hardened prompt, Llama Guard input/output filters) and the
-   security-vs-utility chart; agent-only defenses wait on milestone 2
+   security-vs-utility chart, with paired significance tests; agent-only defenses
+   (tool-permission policy, spotlighting) built and unit-tested, measured once the
+   milestone 2 agent loop exists
 7. 🟡 Static HTML report, [write-up](docs/WRITEUP.md) and qualitative
    [garak / PyRIT comparison](docs/COMPARISON.md) done; measured head-to-head not run
 

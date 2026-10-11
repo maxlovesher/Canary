@@ -63,7 +63,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--conditions", nargs="+", choices=list(CONDITIONS), default=list(CONDITIONS))
     parser.add_argument("--max-cases", type=int, default=None, help="limit cases per run (smoke test)")
     parser.add_argument("--out", type=Path, default=Path("reports/m6_defenses"))
+    parser.add_argument(
+        "--override", action="append", default=[], metavar="KEY=VALUE", help="extra config override for every run"
+    )
+    parser.add_argument("--tag", default="", help="inserted into run names, e.g. '4k' -> m6-4k-none-harmful")
     args = parser.parse_args(argv)
+    prefix = f"m6-{args.tag}-" if args.tag else "m6-"
     configure_logging("INFO")
     log = logging.getLogger("run_defense_matrix")
 
@@ -73,7 +78,7 @@ def main(argv: list[str] | None = None) -> int:
         for condition in args.conditions:
             run_dirs = {}
             for dataset, extra in (("harmful", []), ("benign", BENIGN)):
-                overrides = [f"run.name=m6-{condition}-{dataset}", *CONDITIONS[condition], *extra]
+                overrides = [f"run.name={prefix}{condition}-{dataset}", *CONDITIONS[condition], *extra, *args.override]
                 if args.max_cases:
                     overrides.append(f"run.max_cases={args.max_cases}")
                 log.info("=== condition %s, %s prompts ===", condition, dataset)

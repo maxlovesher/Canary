@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from canary.agents.environment import MockEnvironment
+from canary.agents.policy import BLOCK_PREFIX, ToolPolicy
 
 
 @dataclass(frozen=True)
@@ -67,8 +68,18 @@ def tool_schemas(names: Iterable[str]) -> list[dict[str, Any]]:
     return [TOOLS[name].schema() for name in names]
 
 
-def execute_tool(env: MockEnvironment, name: str, arguments: dict[str, Any], allowed: Iterable[str]) -> str:
-    """Run one tool call against ``env``; problems come back as ``error: ...`` strings."""
+def execute_tool(
+    env: MockEnvironment,
+    name: str,
+    arguments: dict[str, Any],
+    allowed: Iterable[str],
+    policy: ToolPolicy | None = None,
+) -> str:
+    """Run one tool call against ``env``; problems come back as ``error: ...`` strings.
+
+    ``policy`` (a defense) is checked after the arguments are validated and before
+    the tool runs; a denied call never touches the environment.
+    """
     if name not in TOOLS or name not in set(allowed):
         return f"error: unknown tool {name!r}"
     spec = TOOLS[name]
@@ -76,4 +87,6 @@ def execute_tool(env: MockEnvironment, name: str, arguments: dict[str, Any], all
     if missing:
         return f"error: missing argument(s) for {name}: {', '.join(missing)}"
     kwargs = {p: str(arguments[p]) for p in spec.params}
+    if policy is not None and (reason := policy.check(name, kwargs)) is not None:
+        return f"{BLOCK_PREFIX}{reason}"
     return spec.handler(env, **kwargs)
