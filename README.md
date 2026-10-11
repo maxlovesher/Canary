@@ -23,6 +23,7 @@ the repo rather than hidden in a library.
 | Llama Guard output filter | ASR 5.0%, false refusals 18% → 33% |
 
 The HTML report (`uv run canary report` → `reports/index.html`) shows all of it in one page.
+Start with the [write-up](docs/WRITEUP.md); [how Canary compares to garak and PyRIT](docs/COMPARISON.md).
 
 ## Quickstart
 
@@ -145,6 +146,7 @@ the provider's terms. Raw prompts, responses, datasets and caches stay local
    waiting on ~100 human labels
 6. ✅ Defenses (hardened prompt, Llama Guard input/output filters) and the
    security-vs-utility chart; agent-only defenses wait on milestone 2
-7. 🟡 Static HTML report done; garak / PyRIT comparison and write-up not yet
+7. 🟡 Static HTML report, [write-up](docs/WRITEUP.md) and qualitative
+   [garak / PyRIT comparison](docs/COMPARISON.md) done; measured head-to-head not run
 
 Design decisions and open questions: [docs/DECISIONS.md](docs/DECISIONS.md).
