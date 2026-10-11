@@ -1,5 +1,7 @@
 # Canary
 
+[![CI](https://github.com/maxlovesher/Canary/actions/workflows/ci.yml/badge.svg)](https://github.com/maxlovesher/Canary/actions/workflows/ci.yml)
+
 Config-driven red-teaming harness for LLMs, RAG pipelines, and tool-using agents.
 It attacks a system, measures attack success, and (in later milestones) measures how
 much each defense reduces attacks versus what it costs in normal usefulness.
