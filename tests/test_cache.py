@@ -31,6 +31,17 @@ def test_read_only_never_writes(tmp_path):
         assert replay.get("k") == {"v": 1}
 
 
+def test_cache_is_safe_across_threads(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+
+    with ResponseCache(tmp_path / "c.sqlite") as cache:
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            list(pool.map(lambda i: cache.put(f"k{i}", {"v": i}), range(200)))
+            values = list(pool.map(lambda i: cache.get(f"k{i}"), range(200)))
+        assert values == [{"v": i} for i in range(200)]
+        assert len(cache) == 200
+
+
 def test_read_only_requires_existing_file(tmp_path):
     with pytest.raises(CanaryError, match="does not exist"):
         ResponseCache(tmp_path / "missing.sqlite", read_only=True)

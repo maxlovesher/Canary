@@ -7,7 +7,8 @@ handed; ``canary.experiment`` wires it to config, cache, and run directory.
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 from canary.attacks.base import AttackSource
@@ -45,6 +46,7 @@ class Runner:
         secondary_judges: Sequence[Judge] = (),
         max_cases: int | None = None,
         progress_every: int = 10,
+        concurrency: int = 1,
     ) -> None:
         self.target = target
         self.sources = list(sources)
@@ -52,6 +54,7 @@ class Runner:
         self.secondary_judges = list(secondary_judges)
         self.max_cases = max_cases
         self.progress_every = max(1, progress_every)
+        self.concurrency = max(1, concurrency)
 
     def load_cases(self) -> list[AttackCase]:
         """Load cases from every source, reject duplicate IDs, apply ``max_cases``."""
@@ -91,12 +94,21 @@ class Runner:
         )
 
     def run(self, cases: Sequence[AttackCase], writer: ResultWriter) -> RunOutcome:
-        """Run every case, streaming results to ``writer``. Ctrl-C stops cleanly."""
+        """Run every case, streaming results to ``writer`` in case order. Ctrl-C stops cleanly.
+
+        With ``concurrency > 1`` cases are processed by a thread pool (the backend
+        serves several requests at once), but results are still written in case order,
+        so ``results.jsonl`` looks the same as a sequential run.
+        """
         outcome = RunOutcome()
         total = len(cases)
+        pool = ThreadPoolExecutor(max_workers=self.concurrency) if self.concurrency > 1 else None
         try:
-            for index, case in enumerate(cases, start=1):
-                result = self.run_case(case)
+            if pool is None:
+                results: Iterator[AttackResult] = (self.run_case(case) for case in cases)
+            else:
+                results = (future.result() for future in [pool.submit(self.run_case, case) for case in cases])
+            for index, result in enumerate(results, start=1):
                 writer.write(result)
                 outcome.results.append(result)
                 if index % self.progress_every == 0 or index == total:
@@ -104,4 +116,7 @@ class Runner:
         except KeyboardInterrupt:
             outcome.interrupted = True
             logger.warning("interrupted after %d/%d cases; partial results kept", len(outcome.results), total)
+        finally:
+            if pool is not None:
+                pool.shutdown(wait=True, cancel_futures=True)
         return outcome

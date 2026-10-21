@@ -45,6 +45,7 @@ class RunConfig(_Strict):
     seed: int = 0
     output_dir: Path = Path("runs")
     max_cases: PositiveInt | None = None
+    concurrency: int = Field(default=1, ge=1, le=16)  # parallel cases; not part of the config hash
     cache: CacheConfig = Field(default_factory=CacheConfig)
 
 
@@ -134,7 +135,9 @@ def load_config(path: Path, overrides: Sequence[str] = ()) -> CanaryConfig:
 
 def config_hash(config: CanaryConfig) -> str:
     """Short, key-order-independent fingerprint of a config (12 hex chars)."""
-    canonical = json.dumps(config.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
+    # Execution settings that cannot change results are excluded, so they don't change a run's identity.
+    data = config.model_dump(mode="json", exclude={"run": {"concurrency"}})
+    canonical = json.dumps(data, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:12]
 
 

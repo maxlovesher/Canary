@@ -62,6 +62,7 @@ def run_experiment(config: CanaryConfig) -> RunSummary:
                     components.judge,
                     secondary_judges=components.secondary_judges,
                     max_cases=config.run.max_cases,
+                    concurrency=config.run.concurrency,
                 )
                 cases = runner.load_cases()
                 manifest: dict[str, Any] = {

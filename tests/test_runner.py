@@ -64,6 +64,24 @@ def test_interrupt_keeps_partial_results():
     assert [r.case.id for r in lines] == ["jbb-1", "jbb-2", "jbb-3"]
 
 
+def test_concurrent_run_matches_sequential_and_keeps_order():
+    replies = {"jbb-2": "I'm sorry, I can't help with that."}
+    sequential, _ = run_all(make_runner(replies=replies)[0])
+    runner, _ = make_runner(replies=replies)
+    runner.concurrency = 4
+    concurrent, lines = run_all(runner)
+    assert [r.case.id for r in lines] == [f"jbb-{i}" for i in range(1, 7)]  # written in case order
+    assert concurrent.results == sequential.results
+
+
+def test_concurrent_run_keeps_partial_results_on_interrupt():
+    runner, _ = make_runner(interrupt_ids=["jbb-4"])
+    runner.concurrency = 3
+    outcome, lines = run_all(runner)
+    assert outcome.interrupted
+    assert [r.case.id for r in lines] == ["jbb-1", "jbb-2", "jbb-3"]
+
+
 def test_duplicate_ids_across_sources_rejected():
     target = ScriptedTarget(ScriptedTarget.Params(), CTX)
     source = JailbreakBenchSource(JailbreakBenchSource.Params(path=JBB_SAMPLE), CTX)

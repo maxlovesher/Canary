@@ -27,6 +27,7 @@ from pathlib import Path
 from canary.config import load_config
 from canary.errors import CanaryError
 from canary.experiment import run_experiment
+from canary.keep_awake import keep_awake
 from canary.logging_setup import configure_logging
 from canary.run_store import read_results
 from canary.tradeoff import build_report, format_table, render_svg, summarize_condition
@@ -67,7 +68,14 @@ def main(argv: list[str] | None = None) -> int:
         "--override", action="append", default=[], metavar="KEY=VALUE", help="extra config override for every run"
     )
     parser.add_argument("--tag", default="", help="inserted into run names, e.g. '4k' -> m6-4k-none-harmful")
+    parser.add_argument("--keep-awake", action="store_true", help="prevent idle sleep while the matrix runs")
     args = parser.parse_args(argv)
+    with keep_awake(args.keep_awake):
+        return _run_matrix(args)
+
+
+def _run_matrix(args: argparse.Namespace) -> int:
+    """Run every condition and write the report (body of main, wrapped by keep_awake)."""
     prefix = f"m6-{args.tag}-" if args.tag else "m6-"
     configure_logging("INFO")
     log = logging.getLogger("run_defense_matrix")

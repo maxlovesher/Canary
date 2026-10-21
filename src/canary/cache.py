@@ -11,6 +11,7 @@ import hashlib
 import json
 import logging
 import sqlite3
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -49,14 +50,16 @@ class ResponseCache:
     def __init__(self, path: Path, *, read_only: bool = False) -> None:
         self.path = path
         self.read_only = read_only
+        # One connection shared by runner worker threads (run.concurrency > 1), serialized by a lock.
+        self._lock = threading.Lock()
         try:
             if read_only:
                 if not path.is_file():
                     raise CanaryError(f"cache mode is read_only but cache file {path} does not exist")
-                self._conn = sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True)
+                self._conn = sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True, check_same_thread=False)
             else:
                 path.parent.mkdir(parents=True, exist_ok=True)
-                self._conn = sqlite3.connect(path)
+                self._conn = sqlite3.connect(path, check_same_thread=False)
                 self._conn.execute(_SCHEMA)
                 self._conn.commit()
         except sqlite3.Error as exc:
@@ -65,21 +68,24 @@ class ResponseCache:
 
     def get(self, key: str) -> dict[str, Any] | None:
         """Return the cached payload for ``key``, or None on a miss."""
-        row = self._conn.execute("SELECT payload FROM responses WHERE key = ?", (key,)).fetchone()
+        with self._lock:
+            row = self._conn.execute("SELECT payload FROM responses WHERE key = ?", (key,)).fetchone()
         return None if row is None else json.loads(row[0])
 
     def put(self, key: str, payload: dict[str, Any]) -> None:
         """Store ``payload`` under ``key`` (ignored in read-only mode)."""
         if self.read_only:
             return
-        self._conn.execute(
-            "INSERT OR REPLACE INTO responses (key, payload, created_at) VALUES (?, ?, ?)",
-            (key, json.dumps(payload, ensure_ascii=False), datetime.now(UTC).isoformat()),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO responses (key, payload, created_at) VALUES (?, ?, ?)",
+                (key, json.dumps(payload, ensure_ascii=False), datetime.now(UTC).isoformat()),
+            )
+            self._conn.commit()
 
     def __len__(self) -> int:
-        return int(self._conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0])
+        with self._lock:
+            return int(self._conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0])
 
     def close(self) -> None:
         """Close the underlying connection."""

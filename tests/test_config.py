@@ -83,6 +83,13 @@ def test_bad_overrides_rejected(config_dict, write_config, override):
         load_config(write_config(config_dict), [override])
 
 
+def test_concurrency_does_not_change_config_hash(config_dict, write_config):
+    path = write_config(config_dict)
+    assert config_hash(load_config(path)) == config_hash(load_config(path, ["run.concurrency=4"]))
+    with pytest.raises(ConfigError):
+        load_config(path, ["run.concurrency=0"])
+
+
 def test_config_hash_is_stable_and_sensitive(config_dict, write_config):
     path = write_config(config_dict)
     assert config_hash(load_config(path)) == config_hash(load_config(path))

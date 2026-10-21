@@ -16,6 +16,7 @@ from canary.config import CanaryConfig, load_config
 from canary.errors import CanaryError
 from canary.experiment import run_experiment
 from canary.factory import build_components
+from canary.keep_awake import keep_awake
 from canary.labeling import run_labeling
 from canary.labels import LabelStore
 from canary.logging_setup import configure_logging
@@ -54,6 +55,7 @@ def build_parser() -> argparse.ArgumentParser:
             metavar="KEY=VALUE",
             help="override a config value, e.g. --set target.params.model=qwen3:4b (repeatable)",
         )
+        command.add_argument("--keep-awake", action="store_true", help="prevent idle sleep during the run")
     label = commands.add_parser("label", help="hand-label a run's responses (blind, resumable)")
     label.add_argument("run_dir", type=Path, help="run directory containing results.jsonl")
     label.add_argument("--labeler", default=None, help="your name or initials, stored with each label")
@@ -111,7 +113,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         config = load_config(args.config, args.overrides)
         if args.command == "validate":
             return _validate(config)
-        return _run(config)
+        with keep_awake(args.keep_awake):
+            return _run(config)
     except CanaryError as exc:
         logger.error("%s", exc)
         return EXIT_ERROR
