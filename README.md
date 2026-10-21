@@ -76,6 +76,18 @@ with `stage: input` (screens requests) or `stage: output` (screens answers). A
 hardened system prompt is just a different `target.params.system_prompt`.
 `canary tradeoff --pair LABEL HARMFUL_RUN BENIGN_RUN ...` compares any runs.
 
+### Long runs
+
+```bash
+uv run canary run <config> --set run.concurrency=2 --keep-awake   # 2 parallel requests, no idle sleep
+uv run canary status                                               # progress; flags runs that died
+```
+
+`run.concurrency` needs the server to allow parallel requests (e.g. start Ollama with
+`OLLAMA_NUM_PARALLEL=2`); results are still written in case order and it does not
+change the config hash. A run marked `stale` was killed part-way: re-running the
+same config replays its finished cases from the cache in seconds.
+
 Override any config value with `--set dotted.path=value` (values parsed as YAML;
 list items by index, e.g. `--set attacks.0.params.sample=20`).
 
