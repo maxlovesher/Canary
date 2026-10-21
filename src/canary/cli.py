@@ -25,6 +25,7 @@ from canary.records import AttackResult
 from canary.report import build_report_html, load_runs, load_tradeoffs
 from canary.run_store import RunStore, read_results
 from canary.runner import Runner
+from canary.status import format_status, scan_runs
 from canary.tradeoff import build_report, format_table, render_svg, summarize_condition
 
 logger = logging.getLogger("canary")
@@ -89,6 +90,9 @@ def build_parser() -> argparse.ArgumentParser:
     report.add_argument("--min-cases", type=int, default=10, help="hide runs smaller than this (smoke tests)")
     report.add_argument("--featured", default=None, metavar="RUN_ID", help="headline run (default: best baseline)")
     report.add_argument("--out", type=Path, default=Path("reports/index.html"))
+    status = commands.add_parser("status", help="progress of runs, and runs that died part-way")
+    status.add_argument("--runs-dir", type=Path, default=Path("runs"))
+    status.add_argument("--all", action="store_true", help="show every run, not just recent and active ones")
     judges = commands.add_parser("judges", help="pairwise agreement between judges on the same responses")
     judges.add_argument("run_dirs", type=Path, nargs="+", help="runs whose verdicts to pool (matched by response)")
     judges.add_argument("--out", type=Path, default=Path("reports/judges/judges.json"))
@@ -106,6 +110,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _agreement(args.run_dir, labels_path=args.labels)
         if args.command == "tradeoff":
             return _tradeoff(args.pair, judge=args.judge, out_dir=args.out)
+        if args.command == "status":
+            print(format_status(scan_runs(args.runs_dir), limit=None if args.all else 15))
+            return EXIT_OK
         if args.command == "judges":
             return _judges(args.run_dirs, out=args.out)
         if args.command == "report":

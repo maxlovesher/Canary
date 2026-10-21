@@ -152,13 +152,20 @@ def judge_rows(featured: RunInfo, runs: list[RunInfo]) -> list[dict[str, Any]]:
 
 
 def load_tradeoffs(paths: list[Path]) -> list[dict[str, Any]]:
-    """Tradeoff reports that exist and parse."""
+    """Tradeoff (or judges) reports that exist and parse, each tagged with its study name.
+
+    The study name is the report's folder name (e.g. ``m6_defenses_4k``), stored
+    under ``_study`` so several studies can be told apart on the page.
+    """
     reports = []
     for path in paths:
         try:
-            reports.append(json.loads(path.read_text(encoding="utf-8")))
+            report = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
-            logger.warning("skipping tradeoff report %s: %s", path, exc)
+            logger.warning("skipping report %s: %s", path, exc)
+            continue
+        report.setdefault("_study", path.parent.name)
+        reports.append(report)
     return reports
 
 
@@ -361,8 +368,9 @@ def build_report_html(
         sections.append(
             _section(
                 "守",
-                "Defense",
-                "Security against utility. Lower-left is better; whiskers are 95% CIs.",
+                f"Defense · {report.get('_study', 'study')}" if len(tradeoffs) > 1 else "Defense",
+                "Security against utility. Lower-left is better; whiskers are 95% CIs; "
+                "p-values are paired tests against the first condition.",
                 f'<div class="chart">{_scatter(report)}</div>'
                 '<table class="judges"><thead><tr><th>Condition</th><th>ASR</th><th>False refusals</th>'
                 f"<th>Blocked (harmful / benign)</th></tr></thead><tbody>{rows_html}</tbody></table>",
