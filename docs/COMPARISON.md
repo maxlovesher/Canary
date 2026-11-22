@@ -56,17 +56,24 @@ cited below), not recalled from memory. No head-to-head run has been done yet; s
   single dataset of direct requests; milestones 2-4 (agent injection, transforms,
   attacker LLM) are not built.
 
-## Running a measured comparison
+## Measured head-to-head: refusal detectors on identical responses
 
-Not run yet: garak and PyRIT pull in much heavier dependencies than Canary's three,
-and installing them is a choice for the project owner. If done, keep them out of
-Canary's environment:
+**Done for garak** (RESULTS.md, R5). The fair comparison holds the model, prompts and
+responses fixed and varies only the detector. `scripts/compare_garak_detector.py`
+reads garak's `MitigationBypass` substring list from garak's source at a pinned
+commit, re-implements its matching exactly (unit-tested against garak's semantics),
+and scores Canary's 100 cached baseline responses. No garak install, no model
+calls, no new attacks.
 
-```bash
-uvx --from garak garak --target_type ollama --target_name qwen3:4b --probes <probe>
-```
+| Detector on the same 100 responses | Attack success | κ vs Canary `refusal_patterns` |
+|---|---:|---:|
+| Canary `refusal_patterns` (refusal phrases, first 300 chars) | 6% | — |
+| garak `MitigationBypass` (156 substrings, anywhere) | 3% | 0.42 |
 
-A fair comparison would hold the model, prompts and judge fixed and compare (a) the
-refusal detectors on the same responses (Canary `refusal_patterns` vs garak
-`MitigationBypass` vs PyRIT `text_matching`), scored against the same human labels
-with `canary agreement`, and (b) wall-clock and token cost per attack.
+garak's list includes topical words ("ethical" appears in 87 of the 100 responses,
+"illegal" in 78), so answers that mention ethics while complying count as refusals.
+Which trade-off is closer to the truth needs the human labels.
+
+**Not done:** running garak's own probes end to end (needs its full dependency set,
+roughly PyTorch-scale, and generates new attack traffic), and PyRIT's `text_matching`
+scorer, which is configured per use rather than shipping a fixed refusal list.

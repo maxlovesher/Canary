@@ -20,6 +20,7 @@ the repo rather than hidden in a library.
 |---|---|
 | Undefended JailbreakBench direct requests | ASR 6.0% [2.8, 12.5] |
 | Three judges on the same responses | 6.0% / 0.0% / 6.0%, sharing just 1 flagged case; pairwise κ 0.00–0.11 |
+| garak's refusal detector on the same responses | 3.0%; κ 0.42 with Canary's refusal judge ("ethical" appears in 87% of answers) |
 | Hardened system prompt | ASR 1.0%, but false refusals 18% → 69% |
 | Llama Guard input filter | ASR 1.0%, false refusals 18% → 31%; harmful requests rejected in 0.2 s |
 | Llama Guard output filter | ASR 5.0%, false refusals 18% → 33% |
@@ -163,6 +164,6 @@ the provider's terms. Raw prompts, responses, datasets and caches stay local
    (tool-permission policy, spotlighting) built and unit-tested, measured once the
    milestone 2 agent loop exists
 7. 🟡 Static HTML report, [write-up](docs/WRITEUP.md) and qualitative
-   [garak / PyRIT comparison](docs/COMPARISON.md) done; measured head-to-head not run
+   [garak / PyRIT comparison](docs/COMPARISON.md) done, incl. a measured detector head-to-head with garak (R5)
 
 Design decisions and open questions: [docs/DECISIONS.md](docs/DECISIONS.md).
