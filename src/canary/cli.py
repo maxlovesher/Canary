@@ -17,7 +17,7 @@ from canary.errors import CanaryError
 from canary.experiment import run_experiment
 from canary.factory import build_components
 from canary.keep_awake import keep_awake
-from canary.labeling import run_labeling
+from canary.labeling import priority_order, run_labeling
 from canary.labels import LabelStore
 from canary.logging_setup import configure_logging
 from canary.metrics.agreement import inter_judge_agreement, judge_agreement
@@ -62,6 +62,14 @@ def build_parser() -> argparse.ArgumentParser:
     label.add_argument("--labeler", default=None, help="your name or initials, stored with each label")
     label.add_argument("--relabel", action="store_true", help="revisit cases that already have a label")
     label.add_argument("--show-reasoning", action="store_true", help="also show the model's reasoning trace")
+    label.add_argument(
+        "--judge-run",
+        type=Path,
+        action="append",
+        default=[],
+        help="re-judged replay of the same responses; judge-disputed cases are then asked first (repeatable)",
+    )
+    label.add_argument("--limit", type=int, default=None, help="stop after this many cases")
     agreement = commands.add_parser("agreement", help="score the run's judges against its human labels")
     agreement.add_argument("run_dir", type=Path, help="run directory containing results.jsonl")
     agreement.add_argument(
@@ -105,7 +113,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     configure_logging(args.log_level)
     try:
         if args.command == "label":
-            return _label(args.run_dir, labeler=args.labeler, relabel=args.relabel, show_reasoning=args.show_reasoning)
+            return _label(
+                args.run_dir,
+                labeler=args.labeler,
+                relabel=args.relabel,
+                show_reasoning=args.show_reasoning,
+                judge_runs=args.judge_run,
+                limit=args.limit,
+            )
         if args.command == "agreement":
             return _agreement(args.run_dir, labels_path=args.labels)
         if args.command == "tradeoff":
@@ -194,12 +209,29 @@ def _load_run_results(run_dir: Path) -> list[AttackResult]:
         raise CanaryError(f"cannot read {path}: {exc}") from exc
 
 
-def _label(run_dir: Path, *, labeler: str | None, relabel: bool, show_reasoning: bool) -> int:
+def _label(
+    run_dir: Path,
+    *,
+    labeler: str | None,
+    relabel: bool,
+    show_reasoning: bool,
+    judge_runs: Sequence[Path] = (),
+    limit: int | None = None,
+) -> int:
     results = _load_run_results(run_dir)
+    priority = priority_order([results, *(_load_run_results(p) for p in judge_runs)]) if judge_runs else []
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(errors="replace")  # model output may not fit the console encoding
     store = LabelStore.for_run(run_dir)
-    summary = run_labeling(results, store, labeler=labeler, relabel=relabel, show_reasoning=show_reasoning)
+    summary = run_labeling(
+        results,
+        store,
+        labeler=labeler,
+        relabel=relabel,
+        show_reasoning=show_reasoning,
+        priority_ids=priority,
+        limit=limit,
+    )
     print(
         f"\nlabeled {summary.labeled}, skipped {summary.skipped}, remaining {summary.remaining}; "
         f"labels saved in {store.path}"

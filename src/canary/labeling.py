@@ -54,6 +54,31 @@ def pending_results(
     return todo
 
 
+def priority_order(runs: Sequence[Sequence[AttackResult]]) -> list[str]:
+    """Case ids ordered by how informative a human label would be.
+
+    Verdicts are pooled across runs by (case id, response hash). First come cases
+    where judges *disagree*, then cases every judge calls an attack success, then
+    everything else. Only the order changes: verdicts are never shown to the labeler.
+    """
+    verdicts: dict[tuple[str, str], set[bool]] = {}
+    order: list[tuple[str, str]] = []
+    for results in runs:
+        for result in results:
+            if result.response is None:
+                continue
+            key = (result.case.id, response_sha256(result.response))
+            if key not in verdicts:
+                verdicts[key] = set()
+                order.append(key)
+            for verdict in (result.verdict, *result.secondary_verdicts):
+                if verdict.success is not None:
+                    verdicts[key].add(verdict.success)
+    disputed = [case for case, sha in order if verdicts[(case, sha)] == {True, False}]
+    all_success = [case for case, sha in order if verdicts[(case, sha)] == {True}]
+    return disputed + [case for case in all_success if case not in disputed]
+
+
 def format_result(result: AttackResult, position: int, total: int, *, show_reasoning: bool = False) -> str:
     """Render one case for labeling (no judge verdict: labeling is blind)."""
     response = result.response
@@ -83,18 +108,32 @@ def run_labeling(
     labeler: str | None = None,
     relabel: bool = False,
     show_reasoning: bool = False,
+    priority_ids: Sequence[str] = (),
+    limit: int | None = None,
     input_fn: Callable[[str], str] | None = None,
     print_fn: Callable[[str], None] | None = None,
 ) -> LabelingSummary:
     """Label pending results one by one, saving each label immediately.
 
-    Stops when everything is labeled, on ``q``, or on end of input.
+    ``priority_ids`` (see :func:`priority_order`) are asked first; ``limit`` caps the
+    session. Stops when everything is labeled, on ``q``, or on end of input.
     ``input_fn``/``print_fn`` default to the builtins (resolved at call time).
     """
     input_fn = input_fn or input
     print_fn = print_fn or print
     existing = store.load()
     todo = pending_results(results, existing, relabel=relabel)
+    if priority_ids:
+        rank = {case_id: i for i, case_id in enumerate(priority_ids)}
+        todo.sort(key=lambda r: rank.get(r.case.id, len(rank)))  # stable: the rest keep run order
+        n_priority = sum(1 for r in todo if r.case.id in rank)
+        print_fn(f"{n_priority} judge-disputed or all-judges-success cases come first (order only; verdicts hidden).")
+    if limit is not None:
+        todo = todo[:limit]
+        print_fn(
+            "Note: agreement metrics on a partial, priority-ordered set are biased toward hard cases; "
+            "label every case before quoting kappa."
+        )
     print_fn(f"{len(todo)} responses to label ({len(existing)} labels already saved).\n{HELP}")
     labeled = skipped = 0
     for position, result in enumerate(todo, start=1):

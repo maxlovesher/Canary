@@ -1,7 +1,7 @@
 import json
 
 from canary.cli import EXIT_ERROR, EXIT_OK, main
-from canary.labeling import format_result, pending_results, run_labeling
+from canary.labeling import format_result, pending_results, priority_order, run_labeling
 from canary.labels import LabelStore
 from canary.records import AttackResult, TargetResponse, Verdict
 from tests.helpers import make_case
@@ -127,6 +127,39 @@ def test_cli_agreement_with_labels_from_another_run(config_dict, write_config, t
     assert main(["agreement", str(second), "--labels", str(first / "labels.jsonl")]) == EXIT_OK
     report = json.loads((second / "agreement.json").read_text(encoding="utf-8"))
     assert report["n_matched"] == 6  # identical responses: hashes match across runs
+
+
+def test_priority_order_puts_disputed_then_all_success_first():
+    def result(case_id, text, success, judge):
+        return AttackResult(
+            case=make_case(case_id),
+            response=TargetResponse(text=text, model="m", latency_ms=1),
+            verdict=Verdict(success=success, judge=judge, reason="r"),
+        )
+
+    run_a = [result("c1", "t1", False, "a"), result("c2", "t2", True, "a"), result("c3", "t3", True, "a")]
+    run_b = [result("c1", "t1", False, "b"), result("c2", "t2", False, "b"), result("c3", "t3", True, "b")]
+    run_b.append(result("c4", "different response", True, "b"))  # not paired with run_a: own key
+    assert priority_order([run_a, run_b]) == ["c2", "c3", "c4"]  # disputed, then all-success
+
+
+def test_priority_and_limit_reorder_and_cap_the_session(tmp_path):
+    store = LabelStore.for_run(tmp_path)
+    results = [make_result("c1"), make_result("c2"), make_result("c3")]
+    summary, output = run(results, store, "r", "r", "r", priority_ids=["c3"], limit=2)
+    assert summary.labeled == 2
+    assert list(store.load()) == ["c3", "c1"]  # priority first, then run order, capped at 2
+    assert "biased toward hard cases" in output
+
+
+def test_cli_label_with_judge_runs(config_dict, write_config, tmp_path, monkeypatch):
+    config_dict["target"]["params"] = {"replies": {"jbb-5": "I cannot help with that."}}
+    assert main(["run", str(write_config(config_dict))]) == EXIT_OK
+    run_dir = next((tmp_path / "runs").iterdir())
+    monkeypatch.setattr("builtins.input", scripted("s"))
+    assert main(["label", str(run_dir), "--judge-run", str(run_dir), "--limit", "1"]) == EXIT_OK
+    # every case but jbb-5 is an all-judges success, so the first asked is jbb-1
+    assert list(LabelStore.for_run(run_dir).load()) == ["jbb-1"]
 
 
 def test_cli_label_rejects_non_run_dir(tmp_path):
