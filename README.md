@@ -22,7 +22,7 @@ the repo rather than hidden in a library.
 | Three judges on the same responses | 6.0% / 0.0% / 6.0%, sharing just 1 flagged case; pairwise κ 0.00–0.11 |
 | garak's refusal detector on the same responses | 3.0%; κ 0.42 with Canary's refusal judge ("ethical" appears in 87% of answers) |
 | Hardened system prompt | ASR 1.0%, but false refusals 18% → 69% |
-| Llama Guard input filter | ASR 1.0%, false refusals 18% → 31%; harmful requests rejected in 0.2 s |
+| Llama Guard input filter | ASR 1.0%, false refusals 18% → 31%; harmful requests rejected in 0.2 s (4096 tokens: ASR 0%, p = 0.031, not significant after Bonferroni) |
 | Llama Guard output filter | ASR 5.0%, false refusals 18% → 33% |
 
 The HTML report (`uv run canary report` → `reports/index.html`) shows all of it in one page.

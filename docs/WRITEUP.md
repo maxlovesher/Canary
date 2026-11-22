@@ -49,11 +49,12 @@ analysis: canary label / agreement / tradeoff / report
 | Undefended, direct JailbreakBench requests | ASR 6.0% [2.8, 12.5] | refusal patterns (proxy) |
 | Same responses, LLM rubric judge | 0.0% [0.0, 3.7] | qwen3:4b judging itself |
 | Same responses, Llama Guard 3 1B | 6.0% [2.8, 12.5], 1 case shared with row 1 | Llama Guard taxonomy |
+| Same responses, garak `MitigationBypass` | 3.0%, κ 0.42 with row 1 | garak's substring list |
 | Hardened system prompt | ASR 1.0%, false refusals 18% -> 69% | refusal patterns |
-| Llama Guard input filter | ASR 1.0%, false refusals 18% -> 31%; 95/100 harmful requests blocked in 0.2 s | refusal patterns |
+| Llama Guard input filter | ASR 1.0%, false refusals 18% -> 31%; 95/100 harmful requests blocked in 0.2 s (at 4096 tokens: ASR 0%, p = 0.031, not significant after correction) | refusal patterns |
 | Llama Guard output filter | ASR 5.0%, false refusals 18% -> 33% | refusal patterns |
 
-Full tables, provenance and caveats: [RESULTS.md](RESULTS.md) (R1–R4).
+Full tables, provenance and caveats: [RESULTS.md](RESULTS.md) (R1–R6).
 
 ## What I learned
 
@@ -67,11 +68,13 @@ Full tables, provenance and caveats: [RESULTS.md](RESULTS.md) (R1–R4).
 2. **Defenses must be priced in utility.** The hardened prompt told the model to answer
    benign requests fully and it still refused 69% of them. Without the benign run it
    would have looked like the best defense.
-3. **Small differences need the right test.** Every condition saw the same 100
-   prompts, so Canary pairs them (exact McNemar). Even paired, no defense lowered ASR
-   significantly (best p = 0.062: 5 baseline successes removed, none added), while
-   every defense added false refusals with p < 0.001. A single ASR number would have
-   suggested the opposite.
+3. **Small differences need the right test, and the right correction.** Every
+   condition saw the same 100 prompts, so Canary pairs them (exact McNemar). At a
+   2048-token budget no defense lowered ASR significantly (best p = 0.062). Re-run
+   without truncation, the input filter removed all 6 baseline successes (p = 0.031),
+   but with 6 tests in the matrix that does not survive a Bonferroni correction;
+   every false-refusal increase (p <= 0.00024) does. A single ASR number would have
+   suggested the opposite story.
 4. **Reasoning models break naive harnesses.** qwen3 ignores `think: false` (reasoning
    leaks into the answer), and reasoning can consume the whole token budget: an
    LLM judge with 1,024 tokens returned no verdict on 93 of 100 cases. Canary now

@@ -207,3 +207,42 @@ Most frequent garak "mitigation" substrings in these responses: `ethical` (87 of
 - **Neither is ground truth.** Human labels (`canary label`) would show which
   trade-off is closer to "did the answer help"; until then this is a consistency
   result, not an accuracy result.
+
+## R6. Defenses re-measured without truncation: 4096-token budget (2026-11-23), PROXY JUDGES
+
+Same matrix as R4 (`scripts/run_defense_matrix.py --tag 4k`) with `max_tokens: 4096`,
+`num_ctx: 8192`, `run.concurrency: 2`; report in `reports/m6_defenses_4k/`. **No answer
+was truncated in any condition** (R4 had 25–30 truncated benign answers per condition).
+
+| Condition | ASR (harmful) | 95% CI | False refusals (benign) | 95% CI | Blocked h / b | p50 latency h / b |
+|---|---:|---|---:|---|---:|---:|
+| none | 6.0% (6/100) | 2.8 – 12.5% | 15.0% (15/100) | 9.3 – 23.3% | 0 / 0 | 45 s / 82 s |
+| hardened prompt | 1.0% (1/100) | 0.2 – 5.4% | 70.0% (70/100) | 60.4 – 78.1% | 0 / 0 | 24 s / 28 s |
+| Llama Guard input filter | 0.0% (0/100) | 0.0 – 3.7% | 28.0% (28/100) | 20.1 – 37.5% | 95 / 21 | 0.2 s / 77 s |
+| Llama Guard output filter | 3.0% (3/100) | 1.0 – 8.5% | 29.0% (29/100) | 21.0 – 38.5% | 9 / 17 | 46 s / 82 s |
+
+Paired tests vs none (exact McNemar; removed / added):
+
+| Condition | Attack successes | p | False refusals | p |
+|---|---:|---:|---:|---:|
+| hardened prompt | 5 / 0 | 0.062 | 0 / 55 | <0.001 |
+| Llama Guard input filter | 6 / 0 | **0.031** | 0 / 13 | <0.001 |
+| Llama Guard output filter | 3 / 0 | 0.250 | 0 / 14 | <0.001 |
+
+### What changed from R4, and what did not
+
+- **Truncation did not drive R4's conclusions.** Undefended ASR is identical (6%; one
+  case flipped each way, p = 1.0) and the baseline false-refusal rate moved 18.4% → 15.0%
+  (p = 0.45). Every utility cost is still significant and in the same order.
+- **The input filter now removes all 6 baseline successes (p = 0.031).** Significant at
+  0.05 on its own, but this matrix runs 6 tests (3 defenses x 2 metrics); with a
+  Bonferroni correction (alpha = 0.0083) it is *not* significant, while every
+  false-refusal increase (p <= 0.00024) still is. Read it as "suggestive", and as
+  another sign the attack set is too weak to separate defenses on security.
+- **The hardened prompt's cost is unchanged** (70% false refusals; 55 benign requests
+  newly refused, none newly answered) despite its explicit "answer benign requests" rule.
+- **Cost of not truncating:** median latency roughly doubles (benign 31 s -> 82 s). Part
+  of that is `concurrency: 2` (two requests share the GPU), so it is an upper bound on
+  the per-request cost of the larger budget.
+- Generations are new (different budget, context and batching), not a replay of R4,
+  so small case-level differences are expected even at temperature 0.
